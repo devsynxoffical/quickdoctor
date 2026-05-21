@@ -54,7 +54,7 @@ CREATE DATABASE quickdoctor OWNER quickdoctor;
 cd /var/www
 sudo mkdir -p quickdoctor && sudo chown $USER:$USER quickdoctor
 cd quickdoctor
-git clone YOUR_REPO_URL .
+git clone https://github.com/devsynxoffical/quickdoctor.git .
 ```
 
 **Option B — ZIP from your PC**
