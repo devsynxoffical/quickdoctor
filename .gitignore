@@ -26,6 +26,8 @@
 /deploy/**
 !/deploy/nginx-quickdoctor.conf
 !/deploy/vps-bootstrap.sh
+!/deploy/vps-bootstrap-app.sh
+!/deploy/vps-install-system.sh
 !/deploy/QUICK-START-VPS.md
 
 # Archives
