@@ -25,6 +25,7 @@
 # Local deploy bundle (keep only nginx example)
 /deploy/**
 !/deploy/nginx-quickdoctor.conf
+!/deploy/vps-bootstrap.sh
 
 # Archives
 *.zip
