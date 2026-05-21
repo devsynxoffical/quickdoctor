@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickDoctor Admin Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./login.css" />
+  </head>
+  <body>
+    <div class="login-orb orb-a"></div>
+    <div class="login-orb orb-b"></div>
+
+    <main class="login-wrap">
+      <section class="login-brand">
+        <div class="brand-badge">QD</div>
+        <h1>QuickDoctor Super Admin</h1>
+        <p>
+          Secure access to doctors, patients, prescriptions, appointments, billing, support, and content management.
+        </p>
+        <ul>
+          <li>Full platform operations in one place</li>
+          <li>Clinical and content workflows</li>
+          <li>Professional reporting and controls</li>
+        </ul>
+      </section>
+
+      <section class="login-card">
+        <h2>Sign in</h2>
+        <p class="muted">Use your super admin credentials to continue.</p>
+
+        <form id="login-form">
+          <label>
+            <span>Email</span>
+            <input id="email" type="email" placeholder="admin@quickdoctor.ie" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="password" type="password" placeholder="Enter password" required />
+          </label>
+          <button type="submit">Login to Admin Panel</button>
+        </form>
+
+        <div class="credentials">
+          <h3>Default Credentials</h3>
+          <p><strong>Email:</strong> admin@quickdoctor.ie</p>
+          <p><strong>Password:</strong> admin123</p>
+        </div>
+
+        <p id="login-error" class="error-msg"></p>
+      </section>
+    </main>
+
+    <script src="./login.js"></script>
+  </body>
+</html>

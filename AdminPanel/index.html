@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickDoctor Super Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">QD</div>
+          <div>
+            <h1>QuickDoctor</h1>
+            <p>Super Admin</p>
+          </div>
+        </div>
+        <nav class="nav" id="main-nav"></nav>
+        <div class="sidebar-footer">
+          <p>Logged in as</p>
+          <h3>Super Admin</h3>
+          <span>admin@quickdoctor.ie</span>
+          <button id="logout-btn" class="btn sidebar-logout">Logout</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-title-wrap">
+            <button id="mobile-menu-toggle" class="mobile-menu-btn" type="button" aria-label="Toggle menu">☰</button>
+            <div>
+            <h2 id="page-title">Dashboard</h2>
+            <p id="page-subtitle">Monitor operations, teams, and platform health.</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <input id="global-search" type="text" placeholder="Search doctors, patients, RX, appointments..." />
+            <button id="export-btn" class="btn ghost">Export</button>
+            <button id="create-btn" class="btn primary">Create New</button>
+          </div>
+        </header>
+
+        <section id="view-dashboard" class="view active">
+          <div class="stats-grid" id="stats-grid"></div>
+          <div class="panel-grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Revenue Trend (Last 6 Months)</h3>
+              </div>
+              <div class="bar-chart" id="revenue-chart"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Service Distribution</h3>
+              </div>
+              <div class="progress-list" id="service-distribution"></div>
+            </section>
+          </div>
+          <div class="panel-grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Urgent Alerts</h3>
+              </div>
+              <div id="alerts-list" class="list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Recent Activities</h3>
+              </div>
+              <div id="activity-list" class="list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="view-doctors" class="view">
+          <div class="panel-grid two">
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Doctors</h3>
+                <div class="filters">
+                  <select id="doctor-status-filter">
+                    <option value="all">All status</option>
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div id="doctors-table"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Doctor Profile Detail</h3>
+              </div>
+              <div id="doctor-detail" class="detail-empty">Select "View" on a doctor row to inspect full details.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-patients" class="view">
+          <div class="panel-grid two">
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Patients</h3>
+                <div class="filters">
+                  <select id="patient-risk-filter">
+                    <option value="all">All risk levels</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+              <div id="patients-table"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Patient Profile Detail</h3>
+              </div>
+              <div id="patient-detail" class="detail-empty">Select "View" on a patient row to inspect full details.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-prescriptions" class="view">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Prescriptions</h3>
+              <div class="filters">
+                <select id="rx-status-filter">
+                  <option value="all">All status</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+            <div id="prescriptions-table"></div>
+          </div>
+        </section>
+
+        <section id="view-appointments" class="view">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Appointments</h3>
+              <div class="filters">
+                <select id="appt-status-filter">
+                  <option value="all">All status</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+            <div id="appointments-table"></div>
+          </div>
+        </section>
+
+        <section id="view-billing" class="view">
+          <div class="panel-grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Invoices</h3>
+              </div>
+              <div id="invoices-table"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Payout Summary</h3>
+              </div>
+              <div id="payout-list" class="list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="view-support" class="view">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Support Tickets</h3>
+              <div class="filters">
+                <select id="ticket-status-filter">
+                  <option value="all">All status</option>
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
+            </div>
+            <div id="tickets-table"></div>
+          </div>
+        </section>
+
+        <section id="view-settings" class="view">
+          <div class="panel-grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Platform Controls</h3>
+              </div>
+              <form id="settings-form" class="settings-form">
+                <label>
+                  <span>Prescription auto-escalation</span>
+                  <select>
+                    <option>Enabled</option>
+                    <option>Disabled</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Doctor verification strictness</span>
+                  <select>
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Default review SLA (hours)</span>
+                  <input type="number" value="6" />
+                </label>
+                <button id="save-settings-btn" type="button" class="btn primary">Save Settings</button>
+              </form>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Roles & Permissions</h3>
+              </div>
+              <ul class="list">
+                <li><strong>Super Admin:</strong> Full access to all modules and system actions.</li>
+                <li><strong>Clinical Admin:</strong> Clinical review, doctor management, prescriptions.</li>
+                <li><strong>Support Admin:</strong> Tickets, user status updates, communication only.</li>
+                <li><strong>Finance Admin:</strong> Billing, payouts, invoice exports.</li>
+              </ul>
+            </section>
+          </div>
+        </section>
+
+        <section id="view-content" class="view">
+          <div class="panel-grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Website Content Pages</h3>
+                <div class="filters content-filters">
+                  <input id="content-search" type="text" placeholder="Search title or route..." />
+                  <select id="content-section-filter">
+                    <option value="all">All sections</option>
+                    <option value="prescriptions">Prescriptions</option>
+                    <option value="consultation">Consultation</option>
+                    <option value="core">Core Pages</option>
+                    <option value="admin">Admin/Internal</option>
+                  </select>
+                  <select id="content-status-filter">
+                    <option value="all">All status</option>
+                    <option value="Published">Published</option>
+                    <option value="Draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+              <div id="content-pages-list"></div>
+              <div class="pagination-bar">
+                <button id="content-prev" class="btn">Previous</button>
+                <span id="content-page-label">Page 1</span>
+                <button id="content-next" class="btn">Next</button>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Content Editor</h3>
+              </div>
+              <form id="content-editor-form" class="settings-form">
+                <label>
+                  <span>Page title</span>
+                  <input id="content-title" type="text" />
+                </label>
+                <label>
+                  <span>Hero heading</span>
+                  <input id="content-hero" type="text" />
+                </label>
+                <label>
+                  <span>Meta description</span>
+                  <textarea id="content-meta" rows="4"></textarea>
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select id="content-status">
+                    <option>Published</option>
+                    <option>Draft</option>
+                  </select>
+                </label>
+                <button type="button" id="save-content-btn" class="btn primary">Save Page Content</button>
+              </form>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <script src="./app.js"></script>
+  </body>
+  </html>

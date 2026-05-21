@@ -1,0 +1,300 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+export async function fetchApi<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  const text = await response.text();
+  let data: unknown;
+  if (text) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch {
+      throw new Error(text || 'Invalid response from server');
+    }
+  }
+
+  if (!response.ok) {
+    const msg =
+      data && typeof data === 'object' && data !== null && 'message' in data
+        ? String((data as { message?: string }).message)
+        : 'Something went wrong';
+    throw new Error(msg);
+  }
+
+  return data as T;
+}
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  role: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+export type AuthResponse = { token: string; user: AuthUser };
+
+export const authApi = {
+  login: (credentials: { email: string; password: string }) =>
+    fetchApi<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+  register: (data: Record<string, unknown>) =>
+    fetchApi<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export type SpecialtyCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+};
+
+export type PublicDoctor = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  specialization: string;
+  bio?: string;
+  consultationFeeCents: number;
+  currency: string;
+  category?: SpecialtyCategory;
+  averageRating?: number | null;
+  reviewCount?: number;
+};
+
+export type AppointmentRow = {
+  id: string;
+  dateTime: string;
+  status: string;
+  priceCents: number;
+  notes?: string;
+  clinicalNotes?: string;
+  zoomJoinUrlPatient?: string;
+  zoomJoinUrlHost?: string;
+  doctor?: PublicDoctor & { lastName?: string; firstName?: string };
+  patient?: { firstName?: string; lastName?: string };
+  payment?: { status: string; amountCents: number };
+};
+
+export type NotificationRow = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+};
+
+export type CmsSection = {
+  id: string;
+  type: string;
+  sortOrder: number;
+  contentJson: Record<string, unknown>;
+};
+
+export type CmsPage = {
+  id: string;
+  slug: string;
+  title: string;
+  pageType: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  status: string;
+  publishedAt?: string;
+  sections: CmsSection[];
+};
+
+export const specialtyApi = {
+  list: () => fetchApi<SpecialtyCategory[]>('/specialties'),
+};
+
+export const doctorApplyApi = {
+  apply: (data: Record<string, unknown>) =>
+    fetchApi<{ message: string; applicationId: string; status: string }>('/doctors/apply', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  status: () =>
+    fetchApi<{
+      application: {
+        id: string;
+        status: string;
+        createdAt: string;
+        specialtyCategory?: { name: string };
+      };
+      doctorStatus?: string;
+      canAccessPortal: boolean;
+    }>('/doctors/application/status'),
+};
+
+export const publicDoctorApi = {
+  list: (categoryId?: string) =>
+    fetchApi<PublicDoctor[]>(
+      `/doctors/public${categoryId ? `?categoryId=${categoryId}` : ''}`
+    ),
+  get: (id: string) => fetchApi<PublicDoctor & { availability: unknown[] }>(`/doctors/public/${id}`),
+  slots: (id: string, date: string) =>
+    fetchApi<{ slots: string[]; consultationFeeCents: number; currency: string }>(
+      `/doctors/public/${id}/slots?date=${date}`
+    ),
+};
+
+export const paymentApi = {
+  checkout: (data: { doctorId: string; dateTime: string; notes?: string }) =>
+    fetchApi<{
+      checkoutUrl?: string;
+      appointmentId: string;
+      testMode?: boolean;
+      devConfirmUrl?: string;
+      message?: string;
+    }>('/payments/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  devConfirm: (appointmentId: string) =>
+    fetchApi<{ message: string }>(`/payments/dev-confirm/${appointmentId}`, {
+      method: 'POST',
+    }),
+  status: (sessionId: string) =>
+    fetchApi<{ status: string; appointment: AppointmentRow }>(
+      `/payments/status?session_id=${sessionId}`
+    ),
+};
+
+export const appointmentApi = {
+  getAll: () => fetchApi<AppointmentRow[]>('/appointments'),
+  get: (id: string) => fetchApi<AppointmentRow & { patientId?: string; patient?: unknown }>(`/appointments/${id}`),
+  getJoin: (id: string) =>
+    fetchApi<{ canJoin: boolean; url: string | null; message?: string }>(`/appointments/${id}/join`),
+  saveNotes: (id: string, clinicalNotes: string) =>
+    fetchApi<AppointmentRow>(`/appointments/${id}/notes`, {
+      method: 'PATCH',
+      body: JSON.stringify({ clinicalNotes }),
+    }),
+  cancelPending: (id: string) =>
+    fetchApi<{ message: string }>(`/appointments/${id}/pending`, { method: 'DELETE' }),
+};
+
+export const notificationApi = {
+  list: () => fetchApi<NotificationRow[]>('/notifications'),
+  unreadCount: () => fetchApi<{ count: number }>('/notifications/unread-count'),
+  markRead: (id: string) =>
+    fetchApi<{ message: string }>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllRead: () =>
+    fetchApi<{ message: string }>('/notifications/read-all', { method: 'PATCH' }),
+};
+
+export const cmsApi = {
+  getPage: (slug: string) => fetchApi<CmsPage>(`/cms/pages/${slug}`),
+  blogPosts: () => fetchApi<CmsPage[]>('/cms/blog'),
+  navigation: (location = 'header') =>
+    fetchApi<{ label: string; href: string }[]>(`/cms/navigation?location=${location}`),
+};
+
+export const cmsAdminApi = {
+  pages: () => fetchApi<CmsPage[]>('/cms/admin/pages'),
+  createPage: (data: Record<string, unknown>) =>
+    fetchApi<CmsPage>('/cms/admin/pages', { method: 'POST', body: JSON.stringify(data) }),
+  updatePage: (id: string, data: Record<string, unknown>) =>
+    fetchApi<CmsPage>(`/cms/admin/pages/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deletePage: (id: string) =>
+    fetchApi<{ message: string }>(`/cms/admin/pages/${id}`, { method: 'DELETE' }),
+  navigation: () => fetchApi<unknown[]>('/cms/admin/navigation'),
+  saveNavigation: (items: unknown[]) =>
+    fetchApi<unknown[]>('/cms/admin/navigation', {
+      method: 'PUT',
+      body: JSON.stringify({ items }),
+    }),
+  auditLogs: () => fetchApi<unknown[]>('/cms/admin/audit-logs'),
+};
+
+export const accountApi = {
+  exportData: () => fetchApi<Record<string, unknown>>('/account/export'),
+  deleteAccount: (confirmEmail: string) =>
+    fetchApi<{ message: string }>('/account/delete', {
+      method: 'POST',
+      body: JSON.stringify({ confirmEmail }),
+    }),
+  recordConsent: (consentType: string) =>
+    fetchApi<unknown>('/account/consent', {
+      method: 'POST',
+      body: JSON.stringify({ consentType }),
+    }),
+};
+
+export const reviewApi = {
+  create: (data: { appointmentId: string; rating: number; comment?: string }) =>
+    fetchApi<unknown>('/reviews', { method: 'POST', body: JSON.stringify(data) }),
+  forDoctor: (doctorId: string) =>
+    fetchApi<{ reviews: unknown[]; averageRating: number | null; count: number }>(
+      `/reviews/doctor/${doctorId}`
+    ),
+};
+
+export const doctorProfileApi = {
+  get: () => fetchApi<Record<string, unknown>>('/doctor/profile'),
+  update: (data: Record<string, unknown>) =>
+    fetchApi<Record<string, unknown>>('/doctor/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  updateAvailability: (availability: unknown[]) =>
+    fetchApi<Record<string, unknown>>('/doctor/availability', {
+      method: 'PUT',
+      body: JSON.stringify({ availability }),
+    }),
+  updateServices: (data: { priceCents: number; durationMinutes?: number }) =>
+    fetchApi<Record<string, unknown>>('/doctor/services', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const adminApi = {
+  applications: (status?: string) =>
+    fetchApi<unknown[]>(
+      `/admin/applications${status ? `?status=${status}` : ''}`
+    ),
+  approveApplication: (id: string) =>
+    fetchApi<{ message: string }>(`/admin/applications/${id}/approve`, {
+      method: 'PATCH',
+    }),
+  rejectApplication: (id: string, rejectionReason: string) =>
+    fetchApi<{ message: string }>(`/admin/applications/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ rejectionReason }),
+    }),
+  categories: () => fetchApi<SpecialtyCategory[]>('/admin/categories'),
+  createCategory: (data: Record<string, unknown>) =>
+    fetchApi<SpecialtyCategory>('/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  stats: () =>
+    fetchApi<{
+      totalPatients: number;
+      totalDoctors: number;
+      totalAppointments: number;
+      totalRevenue: number;
+    }>('/admin/stats'),
+  users: () => fetchApi<unknown[]>('/admin/users'),
+  appointments: () => fetchApi<unknown[]>('/admin/appointments'),
+  payments: () => fetchApi<unknown[]>('/admin/payments'),
+};

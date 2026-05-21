@@ -1,0 +1,70 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #0062FF;
+  --color-primary-dark: #004ecc;
+  --color-secondary: #64748b;
+  --color-accent: #3b82f6;
+  --color-medical-blue: #0062FF;
+  --color-medical-soft: #f0f7ff;
+  --color-dark-slate: #0F172A;
+  --color-soft-blue: #f0f7ff;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-4xl: 2.5rem;
+  --radius-5xl: 3rem;
+}
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+}
+
+@layer utilities {
+  .glass {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .glass-dark {
+    background-color: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .text-gradient {
+    background-image: linear-gradient(to right, #0062FF, #3b82f6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .medical-shadow {
+    box-shadow: 0 10px 25px -5px rgba(0, 98, 255, 0.16), 0 8px 10px -6px rgba(59, 130, 246, 0.12);
+  }
+  .medical-shadow-lg {
+    box-shadow: 0 20px 50px -12px rgba(0, 98, 255, 0.22);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
