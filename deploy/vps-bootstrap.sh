@@ -4,7 +4,7 @@
 #   bash deploy/vps-bootstrap.sh
 set -euo pipefail
 
-SITE_DOMAIN="${SITE_DOMAIN:-}"
+SITE_DOMAIN="${SITE_DOMAIN:-quickdoctor.ie}"
 if [ -z "$SITE_DOMAIN" ]; then
   echo "Set your domain first: export SITE_DOMAIN=yourdomain.com"
   exit 1
