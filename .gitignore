@@ -28,6 +28,7 @@
 !/deploy/vps-bootstrap.sh
 !/deploy/vps-bootstrap-app.sh
 !/deploy/vps-install-system.sh
+!/deploy/vps-install-system-sudo.sh
 !/deploy/QUICK-START-VPS.md
 
 # Archives

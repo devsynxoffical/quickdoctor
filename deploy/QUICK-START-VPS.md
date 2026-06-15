@@ -34,37 +34,46 @@ Enter your sudo password when asked. Wait 5–15 minutes.
 
 Your VPS login is **`adminuser`** (not `devuser`). The web console often drops you in as `adminuser` — that is **not** root.
 
-### Step 1 — KVM console as **root**
+### Step 1 — System install (needs root once)
 
-1. Hetzner Cloud → your server → **Console**
-2. If you see a shell as `adminuser`, type **`logout`** or press Ctrl+D until you see:
-   ```
-   login:
-   ```
-3. Username: **`root`**  
-   Password: your VPS **root** password (set at install, or reset in Hetzner panel)
+Pick **one** method.
 
-Check:
+#### Method 1 — `adminuser` + sudo (easiest if you know adminuser password)
+
+In the **full KVM console** (bash prompt `adminuser@...$`) — **not** the single-line "Execute command" box:
 
 ```bash
-whoami
-```
-
-Must print **`root`**. If it prints `adminuser`, you are on the wrong account.
-
-Clone under `/root` (root cannot open `/home/adminuser` on some images):
-
-```bash
-cd ~
-git clone https://github.com/devsynxoffical/quickdoctor.git quickdoctor 2>/dev/null || (cd quickdoctor && git pull)
 cd ~/quickdoctor
+git pull
 export SITE_DOMAIN=quickdoctor.ie APP_USER=adminuser
-bash deploy/vps-install-system.sh
+bash deploy/vps-install-system-sudo.sh
 ```
 
-`APP_USER=adminuser` puts secrets in `/home/adminuser/.quickdoctor-deploy-secrets` for step 2.
+Type your **adminuser** password when `sudo` asks. Wait for **"System install done."**
 
-**Forgot root password?** Hetzner → server → **Rescue** → enable, reboot, use rescue password from panel, or reset root via support docs.
+#### Method 2 — Log in as `root` at the KVM `login:` screen
+
+1. Type `logout` until you see `login:`
+2. Username: **`root`** / root password
+3. `whoami` must print `root`
+
+```bash
+export SITE_DOMAIN=quickdoctor.ie APP_USER=adminuser
+bash /home/adminuser/quickdoctor/deploy/vps-install-system.sh
+```
+
+(Root can read that path even though `adminuser` cannot open other users' homes.)
+
+#### Method 3 — `su -` to root from adminuser
+
+```bash
+su -
+# enter ROOT password (not adminuser)
+export SITE_DOMAIN=quickdoctor.ie APP_USER=adminuser
+bash /home/adminuser/quickdoctor/deploy/vps-install-system.sh
+```
+
+**Forgot root password?** Hetzner → server → **Rescue** → enable, reboot, reset root from panel.
 
 ### Step 2 — Console as **adminuser**
 
