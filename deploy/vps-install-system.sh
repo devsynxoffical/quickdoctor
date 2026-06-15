@@ -6,12 +6,14 @@ set -euo pipefail
 if [ "$(id -u)" -ne 0 ]; then
   echo "You are '$(whoami)' — this script must run as root."
   echo ""
-  echo "Hetzner web console: log in as user 'root' (not devuser)."
-  echo "PuTTY as devuser:      sudo -i"
+  echo "Hetzner KVM console: at the 'login:' prompt type root (not adminuser/devuser)."
+  echo "PuTTY:               ssh adminuser@... then  sudo -i"
   echo ""
-  echo "Then clone under /root (do not use /home/devuser — permission denied):"
+  echo "As root:"
   echo "  cd ~ && git clone https://github.com/devsynxoffical/quickdoctor.git quickdoctor"
-  echo "  cd ~/quickdoctor && bash deploy/vps-install-system.sh"
+  echo "  cd ~/quickdoctor"
+  echo "  export SITE_DOMAIN=quickdoctor.ie APP_USER=adminuser"
+  echo "  bash deploy/vps-install-system.sh"
   exit 1
 fi
 
