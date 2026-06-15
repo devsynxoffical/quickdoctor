@@ -36,11 +36,20 @@ You already cloned the repo to `~/quickdoctor`. **Pull latest** (new scripts):
 
 ### Step 1 — Console as **root**
 
-In Hetzner: open console → switch user to **root** (or `sudo -i` if that works in PuTTY).
+In Hetzner: open console → log in as **`root`** (not `devuser`).
+
+Check you are root (must print `root`):
 
 ```bash
-cd /home/devuser/quickdoctor
-git pull
+whoami
+```
+
+Root often **cannot** `cd` into `/home/devuser/...` on hardened VPS images. Clone under `/root` instead:
+
+```bash
+cd ~
+git clone https://github.com/devsynxoffical/quickdoctor.git quickdoctor 2>/dev/null || (cd quickdoctor && git pull)
+cd ~/quickdoctor
 export SITE_DOMAIN=quickdoctor.ie
 bash deploy/vps-install-system.sh
 ```
