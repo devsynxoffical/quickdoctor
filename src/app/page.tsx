@@ -17,6 +17,7 @@ import Link from "next/link";
 import Image from "next/image";
 import BookAppointmentLink from "@/components/BookAppointmentLink";
 import PatientAreaLink from "@/components/PatientAreaLink";
+import CmsPageGate from "@/components/CmsPageGate";
 import heroBgImage from "@/app/prescriptions/jet-lag-prescription/bg 1.jpg";
 import safetyImage from "@/../public/images/saftey-removebg-preview.png";
 
@@ -103,6 +104,7 @@ const digitalCareBenefits = [
 
 export default function Home() {
   return (
+    <CmsPageGate slug="home">
     <main className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-primary selection:text-white overflow-x-hidden">
       <Navbar />
 
@@ -312,5 +314,6 @@ export default function Home() {
 
       <Footer />
     </main>
+    </CmsPageGate>
   );
 }

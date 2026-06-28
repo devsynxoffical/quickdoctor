@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Stethoscope, Menu, ChevronDown, ChevronRight, X, LogIn } from 'lucide-react';
+import { Menu, ChevronDown, ChevronRight, X, LogIn } from 'lucide-react';
+import Logo from '@/components/Logo';
+import UserMenu from '@/components/UserMenu';
 import {
   BOOKING_APPOINTMENTS_PATH,
   getLoginUrl,
-  getRegisterUrl,
   isPatient,
-  normalizeRole,
 } from '@/lib/auth';
 
 const prescriptionOptions = {
@@ -114,24 +114,8 @@ const Navbar = () => {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-
-  React.useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
-
-  const getDashboardPath = () => {
-    if (!user) return getLoginUrl();
-    const role = normalizeRole(user.role);
-    if (role === 'ADMIN') return '/admin';
-    if (role === 'DOCTOR') return '/doctor';
-    return '/dashboard';
-  };
 
   const bookHref = isPatient() ? '/doctors' : getLoginUrl(BOOKING_APPOINTMENTS_PATH, 'book');
 
@@ -142,22 +126,13 @@ const Navbar = () => {
           
           {/* Column 1: Logo */}
           <div className="flex-1 flex justify-start min-w-[180px]">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white group-hover:scale-105 transition-transform shadow-md shadow-primary/25">
-                <Stethoscope className="w-5 h-5" />
-              </div>
-              <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-dark-slate dark:text-white">
-                Quick<span className="text-primary">Doctor</span>
-              </span>
-            </Link>
+            <Logo size="md" />
           </div>
 
           {/* Column 2: Desktop Links */}
           <div className="hidden md:flex flex-[2] justify-center items-center gap-6 lg:gap-7 text-[12px] font-semibold tracking-wide text-slate-600 dark:text-slate-300">
             <Link href="/" className="text-primary border-b-2 border-primary pb-1">Home</Link>
-            {user && (
-              <Link href={getDashboardPath()} className="hover:text-primary transition-colors whitespace-nowrap font-bold">Dashboard</Link>
-            )}
+            <Link href="/dashboard" className="hover:text-primary transition-colors whitespace-nowrap font-bold hidden lg:inline">Dashboard</Link>
             
             <div 
               className="relative h-16 flex items-center"
@@ -266,12 +241,13 @@ const Navbar = () => {
 
           {/* Column 3: Action Buttons */}
           <div className="flex-1 flex justify-end items-center gap-3">
-            <Link 
-              href={user ? getDashboardPath() : bookHref} 
+            <Link
+              href={bookHref}
               className="hidden sm:flex px-5 lg:px-6 py-2.5 bg-primary text-white rounded-lg text-[12px] font-bold tracking-wide hover:bg-primary/90 transition-all active:scale-95 shadow-md shadow-primary/25"
             >
-              {user ? 'My Account' : 'Book appointment'}
+              Book appointment
             </Link>
+            <UserMenu />
             <button 
               onClick={toggleMobileMenu}
               className="md:hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 text-dark-slate dark:text-white"

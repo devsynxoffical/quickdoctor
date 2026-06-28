@@ -32,14 +32,25 @@ export function getStoredUser(): StoredUser | null {
   }
 }
 
-export function saveSession(token: string, user: StoredUser) {
+export function saveSession(token: string, user: StoredUser, options?: { pendingApproval?: boolean }) {
   localStorage.setItem('token', token);
   localStorage.setItem('user', JSON.stringify(user));
+  if (options?.pendingApproval) {
+    localStorage.setItem('pendingApproval', 'true');
+  } else {
+    localStorage.removeItem('pendingApproval');
+  }
+}
+
+export function isPendingApproval(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('pendingApproval') === 'true';
 }
 
 export function clearSession() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  localStorage.removeItem('pendingApproval');
 }
 
 export function isLoggedIn(): boolean {

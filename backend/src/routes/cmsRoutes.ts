@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import {
+  adminGetRegistry,
+  adminSyncPages,
   adminAuditLogs,
   adminCreatePage,
   adminDeletePage,
@@ -24,6 +26,8 @@ router.get('/navigation', getPublicNavigation);
 router.get('/settings', getPublicSettings);
 
 router.get('/admin/pages', authenticate, authorize(['ADMIN']), adminListPages);
+router.get('/admin/registry', authenticate, authorize(['ADMIN']), adminGetRegistry);
+router.post('/admin/pages/sync', authenticate, authorize(['ADMIN']), adminSyncPages);
 router.post('/admin/pages', authenticate, authorize(['ADMIN']), adminCreatePage);
 router.patch('/admin/pages/:id', authenticate, authorize(['ADMIN']), adminUpdatePage);
 router.delete('/admin/pages/:id', authenticate, authorize(['ADMIN']), adminDeletePage);

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from '@/components/NotificationBell';
+import Logo from '@/components/Logo';
 
 const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: string, icon: any, label: string, active: boolean, onClick?: () => void }) => (
   <Link href={href} onClick={onClick}>
@@ -69,14 +70,10 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-8 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-dark-slate rounded-xl flex items-center justify-center medical-shadow">
-              <Shield className="text-white w-6 h-6" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-dark-slate dark:text-white">
-              Admin<span className="text-primary">Panel</span>
-            </span>
-          </Link>
+          <div className="flex flex-col gap-1">
+            <Logo href="/" size="sm" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Admin</span>
+          </div>
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-dark-slate">
             <X className="w-5 h-5" />
           </button>
@@ -89,7 +86,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <SidebarLink href="/admin/doctors" icon={Stethoscope} label="All Doctors" active={pathname === '/admin/doctors'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/patients" icon={Users} label="All Patients" active={pathname === '/admin/patients'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/categories" icon={Briefcase} label="Specialty Categories" active={pathname === '/admin/categories'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/admin/cms" icon={Newspaper} label="CMS & Blog" active={pathname === '/admin/blog' || pathname === '/admin/cms'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/admin/cms" icon={Newspaper} label="Site content" active={pathname === '/admin/blog' || pathname === '/admin/cms'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/appointments" icon={Calendar} label="Appointments" active={pathname === '/admin/appointments'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/payments" icon={BarChart3} label="Payments" active={pathname === '/admin/payments'} onClick={() => setIsSidebarOpen(false)} />
           

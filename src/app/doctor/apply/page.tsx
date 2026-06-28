@@ -54,9 +54,16 @@ export default function DoctorApplyPage() {
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
           <h1 className="text-3xl font-black mb-4">Application submitted</h1>
           <p className="text-slate-500 mb-8">
-            An admin will review your credentials. You will be able to sign in at the doctor portal once approved.
+            Your application was submitted. Sign in at the{' '}
+            <Link href="/doctor" className="text-secondary font-bold hover:underline">
+              doctor portal
+            </Link>{' '}
+            to check status (full access unlocks after admin approval).
           </p>
-          <Link href={`/doctor/apply/status?email=${encodeURIComponent(form.email)}`} className="text-secondary font-bold hover:underline block mb-4">
+          <Link
+            href={`/doctor/apply/status?email=${encodeURIComponent(form.email)}`}
+            className="inline-block px-6 py-3 bg-secondary text-white rounded-xl font-black mb-4"
+          >
             Check application status
           </Link>
           <Link href="/" className="text-primary font-bold hover:underline">

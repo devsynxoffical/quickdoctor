@@ -1,406 +1,363 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { cmsAdminApi, type CmsPage, type CmsSection } from '@/lib/api';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Trash2, Pencil, X, Plus } from 'lucide-react';
+import { cmsAdminApi, type CmsPage, type CmsSection } from '@/lib/api';
+import CmsSectionEditor, { defaultSection, SECTION_TYPES, type SectionDraft } from '@/components/admin/CmsSectionEditor';
+import { ExternalLink, RefreshCw, Search } from 'lucide-react';
 
-type SectionDraft = {
-  type: string;
-  sortOrder: number;
-  contentJson: Record<string, unknown>;
+type RegistryRow = {
+  slug: string;
+  path: string;
+  title: string;
+  group: string;
+  id: string | null;
+  status: string;
+  sectionCount: number;
+  updatedAt: string | null;
 };
 
 function sectionsToDraft(sections: CmsSection[]): SectionDraft[] {
   return [...sections]
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((s, i) => ({
-      type: s.type,
-      sortOrder: i,
-      contentJson: { ...s.contentJson },
-    }));
-}
-
-function defaultSection(type: string, sortOrder: number): SectionDraft {
-  if (type === 'HERO') {
-    return {
-      type: 'HERO',
-      sortOrder,
-      contentJson: { headline: '', subheadline: '', ctaLabel: 'Learn more', ctaHref: '/' },
-    };
-  }
-  return { type: 'TEXT', sortOrder, contentJson: { body: '' } };
+    .map((s, i) => ({ type: s.type, sortOrder: i, contentJson: { ...s.contentJson } }));
 }
 
 export default function AdminCmsPage() {
-  const [pages, setPages] = useState<CmsPage[]>([]);
-  const [title, setTitle] = useState('');
-  const [slug, setSlug] = useState('');
-  const [pageType, setPageType] = useState('PAGE');
-  const [editing, setEditing] = useState<CmsPage | null>(null);
+  const [registry, setRegistry] = useState<RegistryRow[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [groupFilter, setGroupFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [page, setPage] = useState<CmsPage | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editSlug, setEditSlug] = useState('');
-  const [editPageType, setEditPageType] = useState('PAGE');
   const [editStatus, setEditStatus] = useState('DRAFT');
   const [editSeoTitle, setEditSeoTitle] = useState('');
   const [editSeoDescription, setEditSeoDescription] = useState('');
   const [editSections, setEditSections] = useState<SectionDraft[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const load = () => cmsAdminApi.pages().then(setPages).catch(console.error);
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loadRegistry = async () => {
+    setLoading(true);
     try {
-      await cmsAdminApi.createPage({
-        title,
-        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
-        pageType,
-        status: 'DRAFT',
-        sections: [
-          {
-            type: 'HERO',
-            sortOrder: 0,
-            contentJson: { headline: title, subheadline: '', ctaLabel: 'Learn more', ctaHref: '/' },
-          },
-          { type: 'TEXT', sortOrder: 1, contentJson: { body: 'Edit this content in the CMS.' } },
-        ],
-      });
-      setTitle('');
-      setSlug('');
-      load();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed');
+      const data = await cmsAdminApi.registry();
+      setRegistry(data.pages);
+      setGroups(['All', ...data.groups]);
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Failed to load pages');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const openEditor = (page: CmsPage) => {
-    setEditing(page);
-    setEditTitle(page.title);
-    setEditSlug(page.slug);
-    setEditPageType(page.pageType);
-    setEditStatus(page.status);
-    setEditSeoTitle(page.seoTitle || '');
-    setEditSeoDescription(page.seoDescription || '');
-    setEditSections(sectionsToDraft(page.sections || []));
+  useEffect(() => {
+    loadRegistry();
+  }, []);
+
+  const filtered = useMemo(() => {
+    return registry.filter((p) => {
+      if (groupFilter !== 'All' && p.group !== groupFilter) return false;
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        p.title.toLowerCase().includes(q) ||
+        p.path.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q)
+      );
+    });
+  }, [registry, groupFilter, search]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, RegistryRow[]>();
+    for (const row of filtered) {
+      if (!map.has(row.group)) map.set(row.group, []);
+      map.get(row.group)!.push(row);
+    }
+    return map;
+  }, [filtered]);
+
+  const openPage = async (row: RegistryRow) => {
+    setSelectedSlug(row.slug);
+    setMessage(null);
+    if (!row.id) {
+      setPage(null);
+      setEditTitle(row.title);
+      setEditSlug(row.slug);
+      setEditStatus('DRAFT');
+      setEditSeoTitle(row.title);
+      setEditSeoDescription('');
+      setEditSections([]);
+      return;
+    }
+    try {
+      const pages = await cmsAdminApi.pages();
+      const found = pages.find((p) => p.id === row.id);
+      if (!found) return;
+      setPage(found);
+      setEditTitle(found.title);
+      setEditSlug(found.slug);
+      setEditStatus(found.status);
+      setEditSeoTitle(found.seoTitle || '');
+      setEditSeoDescription(found.seoDescription || '');
+      setEditSections(sectionsToDraft(found.sections || []));
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Could not load page');
+    }
   };
 
-  const closeEditor = () => setEditing(null);
+  const syncAll = async (publish: boolean) => {
+    setSyncing(true);
+    setMessage(null);
+    try {
+      const result = await cmsAdminApi.syncPages(publish);
+      setMessage(result.message);
+      await loadRegistry();
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
-  const saveEdit = async () => {
-    if (!editing) return;
+  const createFromRegistry = async () => {
+    if (!selectedSlug) return;
+    const row = registry.find((r) => r.slug === selectedSlug);
+    if (!row) return;
     setSaving(true);
     try {
-      await cmsAdminApi.updatePage(editing.id, {
-        title: editTitle,
-        slug: editSlug,
-        pageType: editPageType,
-        status: editStatus,
-        seoTitle: editSeoTitle || undefined,
-        seoDescription: editSeoDescription || undefined,
-        sections: editSections.map((s, i) => ({ ...s, sortOrder: i })),
+      const created = await cmsAdminApi.createPage({
+        title: row.title,
+        slug: row.slug,
+        pageType: 'PAGE',
+        status: 'DRAFT',
+        seoTitle: row.title,
+        seoDescription: `QuickDoctor — ${row.title}`,
+        sections: editSections.length
+          ? editSections
+          : [
+              defaultSection('HERO', 0),
+              defaultSection('TEXT', 1),
+              defaultSection('FAQ', 2),
+              defaultSection('CTA', 3),
+            ],
       });
-      closeEditor();
-      load();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Save failed');
+      setPage(created);
+      setMessage('Page created — add sections and publish.');
+      await loadRegistry();
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Create failed');
     } finally {
       setSaving(false);
     }
   };
 
-  const deletePage = async (id: string, pageTitle: string) => {
-    if (!confirm(`Delete "${pageTitle}"? This cannot be undone.`)) return;
+  const save = async () => {
+    if (!page) {
+      await createFromRegistry();
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
     try {
-      await cmsAdminApi.deletePage(id);
-      if (editing?.id === id) closeEditor();
-      load();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Delete failed');
+      await cmsAdminApi.updatePage(page.id, {
+        title: editTitle,
+        slug: editSlug,
+        pageType: page.pageType,
+        status: editStatus,
+        seoTitle: editSeoTitle || undefined,
+        seoDescription: editSeoDescription || undefined,
+        sections: editSections.map((s, i) => ({ ...s, sortOrder: i })),
+      });
+      setMessage('Page saved.');
+      await loadRegistry();
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const publish = async (id: string) => {
-    const page = pages.find((p) => p.id === id);
-    if (!page) return;
-    await cmsAdminApi.updatePage(id, { ...page, status: 'PUBLISHED' });
-    load();
-  };
-
-  const unpublish = async (id: string) => {
-    const page = pages.find((p) => p.id === id);
-    if (!page) return;
-    await cmsAdminApi.updatePage(id, { ...page, status: 'DRAFT' });
-    load();
-  };
-
-  const updateSectionField = (index: number, field: string, value: string) => {
-    setEditSections((prev) =>
-      prev.map((s, i) =>
-        i === index ? { ...s, contentJson: { ...s.contentJson, [field]: value } } : s
-      )
-    );
-  };
-
-  const changeSectionType = (index: number, type: string) => {
-    setEditSections((prev) =>
-      prev.map((s, i) => (i === index ? defaultSection(type, s.sortOrder) : s))
-    );
-  };
-
-  const removeSection = (index: number) => {
-    setEditSections((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const addSection = (type: string) => {
-    setEditSections((prev) => [...prev, defaultSection(type, prev.length)]);
-  };
+  const selectedRow = registry.find((r) => r.slug === selectedSlug);
 
   return (
-    <section className="space-y-8">
-      <header>
-        <h1 className="text-4xl font-black">CMS</h1>
-        <p className="text-slate-500">Manage pages, blog posts, and published content.</p>
+    <section className="space-y-6">
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black">Site content manager</h1>
+          <p className="text-slate-500 mt-1">
+            Edit every public page — home, prescriptions, consultations, legal pages, and more.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={syncing}
+            onClick={() => syncAll(false)}
+            className="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            Sync all pages
+          </button>
+          <button
+            type="button"
+            disabled={syncing}
+            onClick={() => syncAll(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+          >
+            Sync & publish all
+          </button>
+        </div>
       </header>
 
-      <form onSubmit={create} className="glass p-6 rounded-3xl flex flex-col md:flex-row gap-4">
-        <input
-          required
-          placeholder="Page title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-        />
-        <input
-          placeholder="slug"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          className="flex-1 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-        />
-        <select
-          value={pageType}
-          onChange={(e) => setPageType(e.target.value)}
-          className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-        >
-          <option value="PAGE">Page</option>
-          <option value="BLOG_POST">Blog post</option>
-        </select>
-        <button type="submit" className="px-6 py-4 bg-primary text-white rounded-2xl font-black">
-          Create
-        </button>
-      </form>
-
-      {editing && (
-        <div className="glass p-8 rounded-3xl space-y-6 border-2 border-primary/20">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-black">Edit: {editing.title}</h2>
-            <button type="button" onClick={closeEditor} className="p-2 text-slate-400 hover:text-primary">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              placeholder="Title"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-            />
-            <input
-              value={editSlug}
-              onChange={(e) => setEditSlug(e.target.value)}
-              placeholder="Slug"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-            />
-            <select
-              value={editPageType}
-              onChange={(e) => setEditPageType(e.target.value)}
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-            >
-              <option value="PAGE">Page</option>
-              <option value="BLOG_POST">Blog post</option>
-            </select>
-            <select
-              value={editStatus}
-              onChange={(e) => setEditStatus(e.target.value)}
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
-            >
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-            </select>
-            <input
-              value={editSeoTitle}
-              onChange={(e) => setEditSeoTitle(e.target.value)}
-              placeholder="SEO title"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none md:col-span-2"
-            />
-            <textarea
-              value={editSeoDescription}
-              onChange={(e) => setEditSeoDescription(e.target.value)}
-              placeholder="SEO description"
-              rows={2}
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none md:col-span-2"
-            />
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-black text-lg">Sections</h3>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => addSection('HERO')}
-                  className="px-3 py-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" /> Hero
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addSection('TEXT')}
-                  className="px-3 py-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" /> Text
-                </button>
-              </div>
-            </div>
-
-            {editSections.map((section, index) => (
-              <div key={index} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <select
-                    value={section.type}
-                    onChange={(e) => changeSectionType(index, e.target.value)}
-                    className="p-2 rounded-xl bg-white dark:bg-slate-800 border-none text-sm font-bold"
-                  >
-                    <option value="HERO">HERO</option>
-                    <option value="TEXT">TEXT</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeSection(index)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
-                    aria-label="Remove section"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {section.type === 'HERO' && (
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <input
-                      value={String(section.contentJson.headline || '')}
-                      onChange={(e) => updateSectionField(index, 'headline', e.target.value)}
-                      placeholder="Headline"
-                      className="p-3 rounded-xl bg-white dark:bg-slate-800 border-none"
-                    />
-                    <input
-                      value={String(section.contentJson.subheadline || '')}
-                      onChange={(e) => updateSectionField(index, 'subheadline', e.target.value)}
-                      placeholder="Subheadline"
-                      className="p-3 rounded-xl bg-white dark:bg-slate-800 border-none"
-                    />
-                    <input
-                      value={String(section.contentJson.ctaLabel || '')}
-                      onChange={(e) => updateSectionField(index, 'ctaLabel', e.target.value)}
-                      placeholder="CTA label"
-                      className="p-3 rounded-xl bg-white dark:bg-slate-800 border-none"
-                    />
-                    <input
-                      value={String(section.contentJson.ctaHref || '')}
-                      onChange={(e) => updateSectionField(index, 'ctaHref', e.target.value)}
-                      placeholder="CTA link"
-                      className="p-3 rounded-xl bg-white dark:bg-slate-800 border-none"
-                    />
-                  </div>
-                )}
-
-                {section.type === 'TEXT' && (
-                  <textarea
-                    value={String(section.contentJson.body || '')}
-                    onChange={(e) => updateSectionField(index, 'body', e.target.value)}
-                    placeholder="Body text"
-                    rows={4}
-                    className="w-full p-3 rounded-xl bg-white dark:bg-slate-800 border-none"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={saveEdit}
-              className="px-6 py-3 bg-primary text-white rounded-xl font-black disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-            {editStatus === 'PUBLISHED' && (
-              <Link href={`/p/${editSlug}`} className="px-6 py-3 text-primary font-bold">
-                Preview live
-              </Link>
-            )}
-          </div>
-        </div>
+      {message && (
+        <p className="p-4 rounded-2xl bg-primary/10 text-primary font-bold text-sm">{message}</p>
       )}
 
-      <ul className="space-y-3 list-none p-0 m-0">
-        {pages.map((p) => (
-          <li key={p.id} className="glass p-5 rounded-2xl flex flex-wrap justify-between gap-4 items-center">
-            <span>
-              <strong>{p.title}</strong>
-              <br />
-              <small className="text-slate-400">
-                /p/{p.slug} • {p.pageType} • {p.status}
-              </small>
-            </span>
-            <span className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => openEditor(p)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold flex items-center gap-1"
-              >
-                <Pencil className="w-3 h-3" /> Edit
-              </button>
-              {p.status === 'PUBLISHED' && (
-                <>
-                  <Link href={`/p/${p.slug}`} className="px-4 py-2 text-sm font-bold text-primary">
-                    View
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search pages…"
+            className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none"
+          />
+        </div>
+        <select
+          value={groupFilter}
+          onChange={(e) => setGroupFilter(e.target.value)}
+          className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-sm"
+        >
+          {groups.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2 space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+          {loading ? (
+            <p className="text-slate-400">Loading site pages…</p>
+          ) : (
+            [...grouped.entries()].map(([group, rows]) => (
+              <div key={group}>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 sticky top-0 bg-slate-50 dark:bg-slate-950 py-1">
+                  {group} ({rows.length})
+                </p>
+                <ul className="space-y-2 list-none p-0 m-0 mb-4">
+                  {rows.map((row) => (
+                    <li key={row.slug}>
+                      <button
+                        type="button"
+                        onClick={() => openPage(row)}
+                        className={`w-full text-left p-4 rounded-2xl transition-all ${
+                          selectedSlug === row.slug
+                            ? 'bg-primary text-white medical-shadow'
+                            : 'glass hover:border-primary/30 border border-transparent'
+                        }`}
+                      >
+                        <p className="font-bold text-sm">{row.title}</p>
+                        <p className={`text-xs mt-1 ${selectedSlug === row.slug ? 'text-white/80' : 'text-slate-400'}`}>
+                          {row.path}
+                        </p>
+                        <p className={`text-[10px] font-black uppercase mt-2 ${selectedSlug === row.slug ? 'text-white/70' : 'text-slate-500'}`}>
+                          {row.status} · {row.sectionCount} sections
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="lg:col-span-3">
+          {!selectedSlug ? (
+            <div className="glass p-10 rounded-3xl text-center text-slate-500">
+              Select a page from the list to edit its content and sections.
+            </div>
+          ) : (
+            <div className="glass p-6 md:p-8 rounded-3xl space-y-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-black">{selectedRow?.title}</h2>
+                  <p className="text-sm text-slate-500">{selectedRow?.path}</p>
+                </div>
+                {page && editStatus === 'PUBLISHED' && (
+                  <Link
+                    href={selectedRow?.path || '/'}
+                    target="_blank"
+                    className="flex items-center gap-2 text-sm font-bold text-primary"
+                  >
+                    View live <ExternalLink className="w-4 h-4" />
                   </Link>
+                )}
+              </div>
+
+              {!page && (
+                <p className="p-4 rounded-xl bg-amber-50 text-amber-800 text-sm font-medium">
+                  This page is not in the database yet. Click &quot;Create page&quot; or run &quot;Sync all pages&quot; first.
+                </p>
+              )}
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title" className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none" />
+                <input value={editSlug} onChange={(e) => setEditSlug(e.target.value)} placeholder="CMS slug" className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none" />
+                <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none">
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
+                </select>
+                <input value={editSeoTitle} onChange={(e) => setEditSeoTitle(e.target.value)} placeholder="SEO title" className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none" />
+                <textarea value={editSeoDescription} onChange={(e) => setEditSeoDescription(e.target.value)} placeholder="SEO description" rows={2} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none md:col-span-2" />
+              </div>
+
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h3 className="font-black">Sections</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {SECTION_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setEditSections((prev) => [...prev, defaultSection(t, prev.length)])}
+                        className="px-2 py-1 text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 rounded-lg"
+                      >
+                        + {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <CmsSectionEditor sections={editSections} onChange={setEditSections} />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button type="button" disabled={saving} onClick={save} className="px-6 py-3 bg-primary text-white rounded-xl font-black disabled:opacity-50">
+                  {saving ? 'Saving…' : page ? 'Save changes' : 'Create page'}
+                </button>
+                {page && editStatus !== 'PUBLISHED' && (
                   <button
                     type="button"
-                    onClick={() => unpublish(p.id)}
-                    className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-sm font-bold"
+                    onClick={() => {
+                      setEditStatus('PUBLISHED');
+                      setTimeout(save, 0);
+                    }}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-black"
                   >
-                    Unpublish
+                    Publish
                   </button>
-                </>
-              )}
-              {p.status !== 'PUBLISHED' && (
-                <button
-                  type="button"
-                  onClick={() => publish(p.id)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold"
-                >
-                  Publish
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => deletePage(p.id, p.title)}
-                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl text-sm font-bold flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" /> Delete
-              </button>
-            </span>
-          </li>
-        ))}
-      </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

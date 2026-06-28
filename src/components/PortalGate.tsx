@@ -10,6 +10,7 @@ import {
   clearSession,
   getStoredUser,
   getToken,
+  isPendingApproval,
   normalizeRole,
   saveSession,
 } from '@/lib/auth';
@@ -80,7 +81,9 @@ const PortalGate = ({
         setUnlocked(false);
         return;
       }
-      saveSession(response.token, response.user);
+      saveSession(response.token, response.user, {
+        pendingApproval: Boolean(response.pendingApproval),
+      });
       setUnlocked(true);
       setWrongRole(null);
     } catch (err: unknown) {
@@ -111,6 +114,33 @@ const PortalGate = ({
   }
 
   if (unlocked) {
+    if (requiredRole === 'DOCTOR' && isPendingApproval()) {
+      return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-6">
+          <div className="max-w-lg w-full glass p-10 rounded-[40px] medical-shadow text-center space-y-6">
+            <Stethoscope className="w-14 h-14 text-secondary mx-auto" />
+            <h1 className="text-2xl font-black">Application under review</h1>
+            <p className="text-slate-500 text-sm">
+              Your doctor account is waiting for admin approval. You can sign in here to check status,
+              but the full portal unlocks after approval.
+            </p>
+            <Link
+              href="/doctor/apply/status"
+              className="inline-block px-6 py-3 bg-secondary text-white rounded-xl font-black"
+            >
+              Check application status
+            </Link>
+            <button
+              type="button"
+              onClick={handleSwitchAccount}
+              className="block w-full text-sm font-bold text-slate-400 hover:text-primary"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      );
+    }
     return <>{children}</>;
   }
 

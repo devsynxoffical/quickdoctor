@@ -12,6 +12,7 @@ import {
   getRegisterUrl,
   getToken,
   getStoredUser,
+  normalizeRole,
   resolvePostLoginPath,
   saveSession,
 } from '@/lib/auth';
@@ -44,8 +45,14 @@ function LoginForm() {
     setError(null);
     try {
       const response = await authApi.login(formData);
-      saveSession(response.token, response.user);
-      router.push(resolvePostLoginPath(response.user?.role, redirect));
+      saveSession(response.token, response.user, {
+        pendingApproval: Boolean(response.pendingApproval),
+      });
+      router.push(
+        response.pendingApproval && normalizeRole(response.user?.role) === 'DOCTOR'
+          ? '/doctor'
+          : resolvePostLoginPath(response.user?.role, redirect)
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

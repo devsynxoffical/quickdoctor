@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, XCircle, ArrowRight, Mail, Lock } from 'lucide-react';
 import { doctorApplyApi } from '@/lib/api';
-import { getToken } from '@/lib/auth';
+import { getToken, saveSession } from '@/lib/auth';
 
 type Status = 'PENDING' | 'APPROVED' | 'REJECTED' | string;
 
@@ -27,12 +27,16 @@ export default function DoctorApplicationStatusPage() {
     setError(null);
     try {
       const token = getToken();
-      const data = token
-        ? await doctorApplyApi.status()
+      type StatusPayload = Awaited<ReturnType<typeof doctorApplyApi.checkStatus>>;
+      const data: StatusPayload = token
+        ? ((await doctorApplyApi.status()) as StatusPayload)
         : await doctorApplyApi.checkStatus(form);
       setStatus(data.application.status);
       setSpecialty(data.application.specialtyCategory?.name ?? null);
       setCanAccessPortal(data.canAccessPortal);
+      if (data.token && data.user) {
+        saveSession(data.token, data.user, { pendingApproval: Boolean(data.pendingApproval) });
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not load application status');
       setStatus(null);

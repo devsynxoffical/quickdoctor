@@ -1,8 +1,11 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { AuthRequest } from '../middleware/auth';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 export const applyAsDoctor = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -138,7 +141,19 @@ export const checkApplicationStatus = async (req: Request, res: Response): Promi
       return;
     }
 
-    res.json(payload);
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+    res.json({
+      ...payload,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.doctor?.firstName,
+        lastName: user.doctor?.lastName,
+      },
+      pendingApproval: payload.doctorStatus === 'PENDING' || !user.isActive,
+    });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }

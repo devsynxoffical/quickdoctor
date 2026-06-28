@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Calendar, FileText,
-  Settings, LogOut, Search, Stethoscope,
+  Settings, LogOut, Search,
   ChevronRight, User, Menu, X
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import Logo from '@/components/Logo';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: string, icon: any, label: string, active: boolean, onClick?: () => void }) => (
@@ -85,14 +86,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-8 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center medical-shadow">
-              <Stethoscope className="text-white w-6 h-6" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-dark-slate dark:text-white">
-              Quick<span className="text-primary">Doctor</span>
-            </span>
-          </Link>
+          <Logo href="/" size="sm" />
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-primary">
             <X className="w-5 h-5" />
           </button>
@@ -151,9 +145,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
              </form>
              {/* Logo for mobile only */}
              <div className="flex items-center gap-2 sm:hidden">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Stethoscope className="text-white w-5 h-5" />
-                </div>
+                <Logo href="/" showText={false} size="sm" />
              </div>
           </div>
 

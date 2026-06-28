@@ -51,6 +51,8 @@ enum CmsSectionType {
   FAQ
   CTA
   HTML
+  FEATURES
+  IMAGE
 }
 
 model User {

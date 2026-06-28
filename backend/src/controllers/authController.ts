@@ -89,11 +89,34 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (user.role === 'DOCTOR' && user.doctor) {
+      if (user.doctor.status === 'REJECTED') {
+        res.status(403).json({
+          message: 'Your doctor application was not approved. Contact support or re-apply.',
+        });
+        return;
+      }
+      if (user.doctor.status === 'SUSPENDED') {
+        res.status(403).json({ message: 'Doctor account suspended.' });
+        return;
+      }
+      if (user.doctor.status === 'PENDING' || !user.isActive) {
+        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+        res.status(200).json({
+          token,
+          user: publicUserPayload(user),
+          pendingApproval: true,
+          message: 'Application under review. You can check status in the doctor portal.',
+        });
+        return;
+      }
+    }
+
     if (!user.isActive) {
       if (user.role === 'DOCTOR') {
         res.status(403).json({
           message:
-            'Your doctor account is pending admin approval. Apply at /doctor/apply or check your application status.',
+            'Your doctor account is pending admin approval. Check status at /doctor/apply/status',
         });
         return;
       }

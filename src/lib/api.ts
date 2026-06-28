@@ -43,7 +43,12 @@ export type AuthUser = {
   lastName?: string;
 };
 
-export type AuthResponse = { token: string; user: AuthUser };
+export type AuthResponse = {
+  token: string;
+  user: AuthUser;
+  pendingApproval?: boolean;
+  message?: string;
+};
 
 export const authApi = {
   login: (credentials: { email: string; password: string }) =>
@@ -184,6 +189,9 @@ export const doctorApplyApi = {
       };
       doctorStatus?: string;
       canAccessPortal: boolean;
+      token?: string;
+      pendingApproval?: boolean;
+      user?: { id: string; email: string; role: string; firstName?: string; lastName?: string };
     }>('/doctors/application/status', {
       method: 'POST',
       body: JSON.stringify(credentials),
@@ -261,6 +269,25 @@ export const cmsApi = {
 
 export const cmsAdminApi = {
   pages: () => fetchApi<CmsPage[]>('/cms/admin/pages'),
+  registry: () =>
+    fetchApi<{
+      pages: Array<{
+        slug: string;
+        path: string;
+        title: string;
+        group: string;
+        id: string | null;
+        status: string;
+        sectionCount: number;
+        updatedAt: string | null;
+      }>;
+      groups: string[];
+    }>('/cms/admin/registry'),
+  syncPages: (publish = false) =>
+    fetchApi<{ message: string; created: number; skipped: number }>('/cms/admin/pages/sync', {
+      method: 'POST',
+      body: JSON.stringify({ publish }),
+    }),
   createPage: (data: Record<string, unknown>) =>
     fetchApi<CmsPage>('/cms/admin/pages', { method: 'POST', body: JSON.stringify(data) }),
   updatePage: (id: string, data: Record<string, unknown>) =>

@@ -3,6 +3,11 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { logAudit } from '../services/auditService';
+import {
+  SITE_PAGE_REGISTRY,
+  defaultSectionsForPage,
+  registryBySlug,
+} from '../lib/sitePagesRegistry';
 
 function paramId(id: string | string[] | undefined): string | undefined {
   if (id === undefined) return undefined;
@@ -252,6 +257,91 @@ export const adminUpdateSettings = async (req: AuthRequest, res: Response): Prom
     }
 
     res.json({ message: 'Settings saved' });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const adminGetRegistry = async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const pages = await prisma.cmsPage.findMany({
+      include: { sections: { orderBy: { sortOrder: 'asc' } } },
+    });
+    const bySlug = new Map(pages.map((p) => [p.slug, p]));
+
+    const merged = SITE_PAGE_REGISTRY.map((def) => {
+      const existing = bySlug.get(def.slug);
+      return {
+        ...def,
+        id: existing?.id ?? null,
+        status: existing?.status ?? 'NOT_CREATED',
+        sectionCount: existing?.sections.length ?? 0,
+        updatedAt: existing?.updatedAt ?? null,
+      };
+    });
+
+    const extraPages = pages
+      .filter((p) => !registryBySlug(p.slug))
+      .map((p) => ({
+        slug: p.slug,
+        path: `/p/${p.slug}`,
+        title: p.title,
+        group: 'Custom',
+        id: p.id,
+        status: p.status,
+        sectionCount: p.sections.length,
+        updatedAt: p.updatedAt,
+      }));
+
+    res.json({ pages: [...merged, ...extraPages], groups: [...new Set(SITE_PAGE_REGISTRY.map((d) => d.group))] });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const adminSyncPages = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const publish = req.body?.publish === true;
+    let created = 0;
+    let skipped = 0;
+
+    for (const def of SITE_PAGE_REGISTRY) {
+      const existing = await prisma.cmsPage.findUnique({ where: { slug: def.slug } });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      const sections = defaultSectionsForPage(def);
+      await prisma.cmsPage.create({
+        data: {
+          slug: def.slug,
+          title: def.title,
+          pageType: def.pageType || 'PAGE',
+          seoTitle: def.title,
+          seoDescription: `QuickDoctor — ${def.title}`,
+          status: publish ? 'PUBLISHED' : 'DRAFT',
+          publishedAt: publish ? new Date() : null,
+          sections: {
+            create: sections.map((s, i) => ({
+              type: s.type as 'HERO' | 'TEXT' | 'HTML' | 'CTA' | 'FAQ' | 'FEATURES' | 'IMAGE',
+              sortOrder: s.sortOrder ?? i,
+              contentJson: s.contentJson,
+            })),
+          },
+        },
+      });
+      created++;
+    }
+
+    await logAudit({
+      actorId: req.user?.id,
+      action: 'CMS_PAGES_SYNCED',
+      entityType: 'CmsPage',
+      entityId: 'registry',
+    });
+
+    res.json({ message: `Sync complete. Created ${created}, skipped ${skipped} existing.`, created, skipped });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }
