@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -11,54 +11,180 @@ import { getToken } from '@/lib/auth';
 import { Calendar, ArrowLeft, CreditCard } from 'lucide-react';
 import DoctorStars from '@/components/DoctorStars';
 
+type DoctorAvailability = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotMinutes?: number;
+};
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function formatDateInput(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function availabilityLabel(availability: DoctorAvailability[]): string {
+  if (!availability.length) return 'No weekly hours set yet';
+  const days = [...availability]
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+    .map((a) => DAY_NAMES[a.dayOfWeek]);
+  const { startTime, endTime } = availability[0];
+  return `${days.join(', ')} · ${startTime}–${endTime}`;
+}
+
+function nextWeekdayOnOrAfter(from: Date, allowedDays: Set<number>): string | null {
+  for (let i = 0; i < 21; i++) {
+    const candidate = new Date(from);
+    candidate.setDate(from.getDate() + i);
+    if (allowedDays.has(candidate.getDay())) {
+      return formatDateInput(candidate);
+    }
+  }
+  return null;
+}
+
+async function findFirstBookableDate(
+  doctorId: string,
+  availability: DoctorAvailability[],
+  startFrom: string
+): Promise<{ date: string; slots: string[]; feeCents: number } | null> {
+  const allowedDays = new Set(availability.map((a) => a.dayOfWeek));
+  if (!allowedDays.size) return null;
+
+  const start = new Date(`${startFrom}T12:00:00`);
+  for (let i = 0; i < 21; i++) {
+    const candidate = new Date(start);
+    candidate.setDate(start.getDate() + i);
+    if (!allowedDays.has(candidate.getDay())) continue;
+
+    const dateStr = formatDateInput(candidate);
+    try {
+      const r = await publicDoctorApi.slots(doctorId, dateStr);
+      if (r.slots.length > 0) {
+        return { date: dateStr, slots: r.slots, feeCents: r.consultationFeeCents };
+      }
+    } catch {
+      /* try next day */
+    }
+  }
+  return null;
+}
+
 function DoctorBookingContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = params.id as string;
 
-  const [doctor, setDoctor] = useState<(PublicDoctor & { bio?: string }) | null>(null);
+  const [doctor, setDoctor] = useState<(PublicDoctor & { bio?: string; availability?: DoctorAvailability[] }) | null>(
+    null
+  );
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState('');
   const [notes, setNotes] = useState('');
   const [feeCents, setFeeCents] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slotHint, setSlotHint] = useState<string | null>(null);
 
   useEffect(() => {
     publicDoctorApi
       .get(id)
-      .then((d) => setDoctor(d as PublicDoctor))
+      .then((d) => setDoctor(d as PublicDoctor & { availability?: DoctorAvailability[] }))
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => {
-    const dateParam = searchParams.get('date');
-    if (dateParam) setDate(dateParam);
-  }, [searchParams]);
+  const loadSlotsForDate = useCallback(
+    async (dateStr: string, slotParam?: string | null, autoSelectFirst = true) => {
+      if (!dateStr) {
+        setSlots([]);
+        setSelectedSlot('');
+        setSlotHint(null);
+        return;
+      }
 
-  useEffect(() => {
-    if (!date) {
-      setSlots([]);
-      return;
-    }
-    const slotParam = searchParams.get('slot');
-    publicDoctorApi
-      .slots(id, date)
-      .then((r) => {
+      setSlotsLoading(true);
+      setSlotHint(null);
+      try {
+        const r = await publicDoctorApi.slots(id, dateStr);
         setSlots(r.slots);
         setFeeCents(r.consultationFeeCents);
+
         if (slotParam && r.slots.includes(slotParam)) {
           setSelectedSlot(slotParam);
+        } else if (autoSelectFirst && r.slots.length > 0) {
+          setSelectedSlot(r.slots[0]);
         } else {
           setSelectedSlot('');
         }
-      })
-      .catch(() => setSlots([]));
-  }, [id, date, searchParams]);
+
+        if (r.slots.length === 0 && doctor?.availability?.length) {
+          const day = new Date(`${dateStr}T12:00:00`).getDay();
+          const allowed = doctor.availability.some((a) => a.dayOfWeek === day);
+          if (!allowed) {
+            setSlotHint(`Not available on ${DAY_NAMES[day]}. ${availabilityLabel(doctor.availability)}`);
+          } else {
+            setSlotHint('No open times left on this day — try a later date.');
+          }
+        } else if (r.slots.length === 0) {
+          setSlotHint('No times available on this day.');
+        }
+      } catch {
+        setSlots([]);
+        setSelectedSlot('');
+        setSlotHint('Could not load times. Please try again.');
+      } finally {
+        setSlotsLoading(false);
+      }
+    },
+    [id, doctor?.availability]
+  );
+
+  useEffect(() => {
+    if (!doctor) return;
+
+    const dateParam = searchParams.get('date');
+    const slotParam = searchParams.get('slot');
+
+    if (dateParam) {
+      setDate(dateParam);
+      loadSlotsForDate(dateParam, slotParam);
+      return;
+    }
+
+    const today = formatDateInput(new Date());
+    const allowedDays = new Set((doctor.availability || []).map((a) => a.dayOfWeek));
+
+    if (!allowedDays.size) {
+      setDate(today);
+      loadSlotsForDate(today, null, false);
+      setSlotHint('This doctor has not set weekly availability yet.');
+      return;
+    }
+
+    void (async () => {
+      const first = await findFirstBookableDate(id, doctor.availability || [], today);
+      if (first) {
+        setDate(first.date);
+        setSlots(first.slots);
+        setFeeCents(first.feeCents);
+        setSelectedSlot(first.slots[0]);
+        setSlotHint(null);
+      } else {
+        const fallback = nextWeekdayOnOrAfter(new Date(), allowedDays) || today;
+        setDate(fallback);
+        await loadSlotsForDate(fallback, null, false);
+      }
+    })();
+  }, [doctor, id, searchParams, loadSlotsForDate]);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -68,6 +194,12 @@ function DoctorBookingContent() {
       });
     }
   }, [searchParams, router]);
+
+  const handleDateChange = (dateStr: string) => {
+    setDate(dateStr);
+    setSelectedSlot('');
+    loadSlotsForDate(dateStr, null, true);
+  };
 
   const handlePay = async () => {
     if (!selectedSlot) return;
@@ -101,6 +233,17 @@ function DoctorBookingContent() {
     }
   };
 
+  const payDisabled = paying || !selectedSlot;
+  const payHint = !selectedSlot
+    ? !date
+      ? 'Choose a date to see available times'
+      : slotsLoading
+        ? 'Loading available times…'
+        : slots.length === 0
+          ? slotHint || 'Pick a date with open times (Mon–Fri)'
+          : 'Select a time slot above'
+    : null;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-400">
@@ -121,6 +264,7 @@ function DoctorBookingContent() {
   }
 
   const fee = (feeCents || doctor.consultationFeeCents) / 100;
+  const hoursLabel = availabilityLabel(doctor.availability || []);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -146,6 +290,9 @@ function DoctorBookingContent() {
               className="mt-3"
             />
             {doctor.bio && <p className="text-sm text-slate-400 mt-4">{doctor.bio}</p>}
+            <p className="text-xs font-bold text-secondary mt-3 uppercase tracking-wide">
+              Available: {hoursLabel}
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -154,22 +301,22 @@ function DoctorBookingContent() {
             </label>
             <input
               type="date"
-              min={new Date().toISOString().slice(0, 10)}
+              min={formatDateInput(new Date())}
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => handleDateChange(e.target.value)}
               className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
             />
           </div>
 
           {date && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-3"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
               <p className="text-xs font-black uppercase text-slate-400">Available times</p>
-              {slots.length === 0 ? (
-                <p className="text-sm text-slate-500">No slots on this day.</p>
+              {slotsLoading ? (
+                <p className="text-sm text-slate-500">Loading times…</p>
+              ) : slots.length === 0 ? (
+                <p className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                  {slotHint || 'No slots on this day.'}
+                </p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {slots.map((slot) => (
@@ -177,10 +324,10 @@ function DoctorBookingContent() {
                       key={slot}
                       type="button"
                       onClick={() => setSelectedSlot(slot)}
-                      className={`p-3 rounded-xl text-sm font-bold ${
+                      className={`p-3 rounded-xl text-sm font-bold transition-colors ${
                         selectedSlot === slot
-                          ? 'bg-primary text-white'
-                          : 'bg-slate-100 dark:bg-slate-800'
+                          ? 'bg-primary text-white ring-2 ring-primary ring-offset-2'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-primary/10'
                       }`}
                     >
                       {new Date(slot).toLocaleTimeString([], {
@@ -201,20 +348,26 @@ function DoctorBookingContent() {
             className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none h-24"
           />
 
-          {error && (
-            <p className="text-sm text-red-600 font-bold">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600 font-bold">{error}</p>}
 
           <div className="flex items-center justify-between p-4 rounded-2xl bg-primary/5">
             <span className="font-bold">Consultation fee</span>
             <span className="text-xl font-black text-primary">€{fee.toFixed(2)}</span>
           </div>
 
+          {payHint && (
+            <p className="text-sm text-center text-slate-500 font-medium">{payHint}</p>
+          )}
+
           <button
             type="button"
             onClick={handlePay}
-            disabled={paying || !selectedSlot}
-            className="w-full py-4 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={payDisabled}
+            className={`w-full py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all ${
+              payDisabled
+                ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-primary text-white hover:opacity-95'
+            }`}
           >
             <CreditCard className="w-5 h-5" />
             {paying ? 'Processing…' : 'Pay & book'}

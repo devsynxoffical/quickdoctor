@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
-import { generateSlotsForDay, type WeeklySlot } from '../utils/slots';
+import { generateSlotsForDay, parseBookingDate, type WeeklySlot } from '../utils/slots';
 
 async function reviewStatsByDoctorId(doctorIds: string[]) {
   const map = new Map<string, { averageRating: number | null; reviewCount: number }>();
@@ -124,7 +124,7 @@ export const getDoctorSlots = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const date = new Date(dateStr + 'T00:00:00');
+    const date = parseBookingDate(dateStr);
     const dayOfWeek = date.getDay();
 
     const dayAvailability = doctor.availability.find((a) => a.dayOfWeek === dayOfWeek);

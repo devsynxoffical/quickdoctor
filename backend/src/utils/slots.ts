@@ -16,6 +16,11 @@ function formatTime(mins: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+export function parseBookingDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function generateSlotsForDay(
   availability: WeeklySlot | undefined,
   date: Date,
@@ -30,24 +35,16 @@ export function generateSlotsForDay(
   const end = parseTime(availability.endTime);
   const step = availability.slotMinutes;
   const slots: string[] = [];
-
-  const bookedSet = new Set(
-    bookedTimes.map((d) => {
-      const b = new Date(d);
-      return `${b.getHours()}:${b.getMinutes()}`;
-    })
-  );
+  const now = new Date();
 
   for (let t = start; t + step <= end; t += step) {
     const slotDate = new Date(date);
     slotDate.setHours(Math.floor(t / 60), t % 60, 0, 0);
-    if (slotDate <= new Date()) continue;
+    if (slotDate <= now) continue;
 
-    const key = `${Math.floor(t / 60)}:${t % 60}`;
-    const iso = slotDate.toISOString();
     const isBooked = bookedTimes.some((b) => new Date(b).getTime() === slotDate.getTime());
     if (!isBooked) {
-      slots.push(iso);
+      slots.push(slotDate.toISOString());
     }
   }
 
