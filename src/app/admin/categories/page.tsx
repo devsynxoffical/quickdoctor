@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { motion } from 'framer-motion';
 import { adminApi, type SpecialtyCategory } from '@/lib/api';
 import { Plus } from 'lucide-react';
@@ -32,8 +31,7 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <AdminLayout>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
         <h1 className="text-4xl font-black">Specialty categories</h1>
         <p className="text-slate-500">Doctors choose a category when applying.</p>
 
@@ -76,6 +74,5 @@ export default function AdminCategoriesPage() {
           ))}
         </motion.div>
       </motion.div>
-    </AdminLayout>
-  );
+      );
 }

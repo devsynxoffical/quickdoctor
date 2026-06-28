@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { adminApi } from '@/lib/api';
 
 type Row = {
@@ -27,8 +26,7 @@ export default function AdminAppointmentsPage() {
   }, []);
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+          <div className="space-y-8">
         <h1 className="text-4xl font-black">All appointments</h1>
         {loading ? (
           <p className="text-slate-400">Loading…</p>
@@ -52,6 +50,5 @@ export default function AdminAppointmentsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
-  );
+      );
 }

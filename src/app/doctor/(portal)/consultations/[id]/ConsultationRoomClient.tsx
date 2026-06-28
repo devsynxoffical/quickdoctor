@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import DoctorDashboardLayout from '@/components/DoctorDashboardLayout';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -111,15 +110,12 @@ export default function ConsultationRoomClient() {
   if (loading) return <div className="p-10 text-center">Loading consultation room...</div>;
   if (!appointment?.patient) {
     return (
-      <DoctorDashboardLayout>
-        <div className="p-10 text-center text-slate-500">Consultation not found or you do not have access.</div>
-      </DoctorDashboardLayout>
-    );
+              <div className="p-10 text-center text-slate-500">Consultation not found or you do not have access.</div>
+          );
   }
 
   return (
-    <DoctorDashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-8">
+          <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <button 
@@ -360,6 +356,5 @@ export default function ConsultationRoomClient() {
           </div>
         </div>
       </div>
-    </DoctorDashboardLayout>
-  );
+      );
 }

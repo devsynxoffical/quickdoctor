@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Search, Edit3, Trash2, 
@@ -18,8 +17,7 @@ const BlogManagement = () => {
   ]);
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+          <div className="space-y-8">
         <div className="flex items-center justify-between">
            <div>
               <h1 className="text-4xl font-bold text-dark-slate dark:text-white mb-2">CMS Blog System</h1>
@@ -184,8 +182,7 @@ const BlogManagement = () => {
            )}
         </AnimatePresence>
       </div>
-    </AdminLayout>
-  );
+      );
 };
 
 export default BlogManagement;

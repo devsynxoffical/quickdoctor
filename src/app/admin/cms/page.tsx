@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { cmsAdminApi, type CmsPage } from '@/lib/api';
 import Link from 'next/link';
 
@@ -50,8 +49,7 @@ export default function AdminCmsPage() {
   };
 
   return (
-    <AdminLayout>
-      <section className="space-y-8">
+          <section className="space-y-8">
         <header>
           <h1 className="text-4xl font-black">CMS</h1>
           <p className="text-slate-500">Manage pages, blog posts, and published content.</p>
@@ -114,6 +112,5 @@ export default function AdminCmsPage() {
           ))}
         </ul>
       </section>
-    </AdminLayout>
-  );
+      );
 }

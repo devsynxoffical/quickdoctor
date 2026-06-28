@@ -84,10 +84,10 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Doctor Panel</p>
           <SidebarLink href="/doctor" icon={LayoutDashboard} label="Overview" active={pathname === '/doctor'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/doctor/consultations" icon={Users} label="Pending Reviews" active={pathname === '/doctor/consultations'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/doctor/schedule" icon={Calendar} label="Availability Plan" active={pathname === '/doctor/schedule'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/doctor/prescriptions" icon={Pill} label="Issue Prescription" active={pathname === '/doctor/prescriptions'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/doctor/certificates" icon={FileText} label="Sick Certificates" active={pathname === '/doctor/certificates'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/doctor/consultations" icon={Users} label="Consultations" active={pathname.startsWith('/doctor/consultations')} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/doctor/schedule" icon={Calendar} label="Availability" active={pathname === '/doctor/schedule'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/doctor/prescriptions" icon={Pill} label="Prescriptions" active={pathname === '/doctor/prescriptions'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/doctor/certificates" icon={FileText} label="Certificates" active={pathname === '/doctor/certificates'} onClick={() => setIsSidebarOpen(false)} />
           
           <div className="pt-8">
             <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Account</p>

@@ -97,27 +97,69 @@ export const getMyApplicationStatus = async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const application = await prisma.doctorApplication.findUnique({
-      where: { userId },
-      include: {
-        specialtyCategory: true,
-        user: { select: { email: true, isActive: true } },
-      },
-    });
-
-    const doctor = await prisma.doctor.findUnique({ where: { userId } });
-
-    if (!application) {
+    const payload = await buildApplicationStatusResponse(userId);
+    if (!payload) {
       res.status(404).json({ message: 'No application found' });
       return;
     }
 
-    res.json({
-      application,
-      doctorStatus: doctor?.status,
-      canAccessPortal: doctor?.status === 'APPROVED' && application.user.isActive,
-    });
+    res.json(payload);
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }
 };
+
+export const checkApplicationStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ message: 'Email and password required' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { doctor: true },
+    });
+    if (!user || user.role !== 'DOCTOR') {
+      res.status(400).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      res.status(400).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    const payload = await buildApplicationStatusResponse(user.id);
+    if (!payload) {
+      res.status(404).json({ message: 'No application found' });
+      return;
+    }
+
+    res.json(payload);
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+async function buildApplicationStatusResponse(userId: string) {
+  const application = await prisma.doctorApplication.findUnique({
+    where: { userId },
+    include: {
+      specialtyCategory: true,
+      user: { select: { email: true, isActive: true } },
+    },
+  });
+
+  const doctor = await prisma.doctor.findUnique({ where: { userId } });
+
+  if (!application) return null;
+
+  return {
+    application,
+    doctorStatus: doctor?.status,
+    canAccessPortal: doctor?.status === 'APPROVED' && application.user.isActive,
+  };
+}

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { motion } from 'framer-motion';
 import { 
   Users, Stethoscope, BarChart3, 
@@ -39,8 +38,7 @@ const AdminOverview = () => {
   }, []);
 
   return (
-    <AdminLayout>
-      <div className="space-y-10">
+          <div className="space-y-10">
         {/* Global Performance Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
            {[
@@ -153,8 +151,7 @@ const AdminOverview = () => {
            </div>
         </div>
       </div>
-    </AdminLayout>
-  );
+      );
 };
 
 export default AdminOverview;

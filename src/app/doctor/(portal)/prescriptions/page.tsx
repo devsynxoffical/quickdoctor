@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import DoctorDashboardLayout from '@/components/DoctorDashboardLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Pill, Plus, Trash2, 
@@ -253,8 +252,6 @@ const PrescriptionGenerator = () => {
 
 export default function DoctorPrescriptions() {
   return (
-    <DoctorDashboardLayout>
-      <PrescriptionGenerator />
-    </DoctorDashboardLayout>
-  );
+          <PrescriptionGenerator />
+      );
 }

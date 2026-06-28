@@ -56,7 +56,7 @@ export default function DoctorApplyPage() {
           <p className="text-slate-500 mb-8">
             An admin will review your credentials. You will be able to sign in at the doctor portal once approved.
           </p>
-          <Link href="/doctor/apply/status" className="text-secondary font-bold hover:underline block mb-4">
+          <Link href={`/doctor/apply/status?email=${encodeURIComponent(form.email)}`} className="text-secondary font-bold hover:underline block mb-4">
             Check application status
           </Link>
           <Link href="/" className="text-primary font-bold hover:underline">

@@ -86,10 +86,9 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Management</p>
           <SidebarLink href="/admin" icon={LayoutDashboard} label="Dashboard" active={pathname === '/admin'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/applications" icon={Stethoscope} label="Doctor Applications" active={pathname === '/admin/applications'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/admin/categories" icon={Briefcase} label="Specialty Categories" active={pathname === '/admin/categories'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/doctors" icon={Stethoscope} label="All Doctors" active={pathname === '/admin/doctors'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/patients" icon={Users} label="All Patients" active={pathname === '/admin/patients'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/admin/services" icon={Briefcase} label="Services & Pricing" active={pathname === '/admin/services'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/admin/categories" icon={Briefcase} label="Specialty Categories" active={pathname === '/admin/categories'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/cms" icon={Newspaper} label="CMS & Blog" active={pathname === '/admin/blog' || pathname === '/admin/cms'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/appointments" icon={Calendar} label="Appointments" active={pathname === '/admin/appointments'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/payments" icon={BarChart3} label="Payments" active={pathname === '/admin/payments'} onClick={() => setIsSidebarOpen(false)} />

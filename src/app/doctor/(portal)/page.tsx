@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import DoctorDashboardLayout from '@/components/DoctorDashboardLayout';
 import { motion } from 'framer-motion';
 import { 
   Users, Video, ClipboardList, Clock, 
@@ -66,8 +65,7 @@ const DoctorOverview = () => {
   }, []);
 
   return (
-    <DoctorDashboardLayout>
-      <div className="space-y-10">
+          <div className="space-y-10">
         {/* Header Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
            {[
@@ -198,8 +196,7 @@ const DoctorOverview = () => {
            </div>
         </div>
       </div>
-    </DoctorDashboardLayout>
-  );
+      );
 };
 
 export default DoctorOverview;

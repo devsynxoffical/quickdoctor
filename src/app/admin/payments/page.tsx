@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { adminApi } from '@/lib/api';
 
 type PaymentRow = {
@@ -28,8 +27,7 @@ export default function AdminPaymentsPage() {
   }, []);
 
   return (
-    <AdminLayout>
-      <section className="space-y-8">
+          <section className="space-y-8">
         <h1 className="text-4xl font-black">Payments</h1>
         {loading ? (
           <p className="text-slate-400">Loading…</p>
@@ -60,6 +58,5 @@ export default function AdminPaymentsPage() {
           </ul>
         )}
       </section>
-    </AdminLayout>
-  );
+      );
 }

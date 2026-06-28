@@ -96,8 +96,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Main Menu</p>
           <SidebarLink href="/dashboard" icon={LayoutDashboard} label="Overview" active={pathname === '/dashboard'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/dashboard/appointments" icon={Calendar} label="Appointments" active={pathname === '/dashboard/appointments'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/dashboard/records" icon={FileText} label="Medical Records" active={pathname === '/dashboard/records'} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/dashboard/prescriptions" icon={Pill} label="Prescriptions" active={pathname === '/dashboard/prescriptions'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/dashboard/records" icon={FileText} label="Prescriptions & Records" active={pathname === '/dashboard/records' || pathname === '/dashboard/prescriptions'} onClick={() => setIsSidebarOpen(false)} />
           
           <div className="pt-8">
             <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">System</p>

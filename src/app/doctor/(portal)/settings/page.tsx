@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import DoctorDashboardLayout from '@/components/DoctorDashboardLayout';
 import { motion } from 'framer-motion';
 import { doctorProfileApi } from '@/lib/api';
 
@@ -52,8 +51,7 @@ export default function DoctorSettingsPage() {
   };
 
   return (
-    <DoctorDashboardLayout>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 max-w-2xl">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 max-w-2xl">
         <h1 className="text-3xl font-black">Profile & fees</h1>
         <p className="text-slate-500 text-sm">Set your consultation price and weekly availability before patients can book.</p>
 
@@ -127,6 +125,5 @@ export default function DoctorSettingsPage() {
           {loading ? 'Saving…' : 'Save & publish profile'}
         </button>
       </motion.div>
-    </DoctorDashboardLayout>
-  );
+      );
 }

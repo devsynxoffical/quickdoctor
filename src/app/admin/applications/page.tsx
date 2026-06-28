@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
 import { motion } from 'framer-motion';
 import { adminApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
@@ -65,8 +64,7 @@ export default function AdminApplicationsPage() {
   };
 
   return (
-    <AdminLayout>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
         <div>
           <h1 className="text-4xl font-black">Doctor applications</h1>
           <p className="text-slate-500 mt-2">Review and approve doctor registration requests.</p>
@@ -148,6 +146,5 @@ export default function AdminApplicationsPage() {
           </div>
         )}
       </motion.div>
-    </AdminLayout>
-  );
+      );
 }

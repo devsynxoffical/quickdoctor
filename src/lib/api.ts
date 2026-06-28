@@ -142,6 +142,20 @@ export const doctorApplyApi = {
       doctorStatus?: string;
       canAccessPortal: boolean;
     }>('/doctors/application/status'),
+  checkStatus: (credentials: { email: string; password: string }) =>
+    fetchApi<{
+      application: {
+        id: string;
+        status: string;
+        createdAt: string;
+        specialtyCategory?: { name: string };
+      };
+      doctorStatus?: string;
+      canAccessPortal: boolean;
+    }>('/doctors/application/status', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
 };
 
 export const publicDoctorApi = {
@@ -295,6 +309,7 @@ export const adminApi = {
       totalRevenue: number;
     }>('/admin/stats'),
   users: () => fetchApi<unknown[]>('/admin/users'),
+  doctors: () => fetchApi<unknown[]>('/admin/doctors'),
   appointments: () => fetchApi<unknown[]>('/admin/appointments'),
   payments: () => fetchApi<unknown[]>('/admin/payments'),
 };
