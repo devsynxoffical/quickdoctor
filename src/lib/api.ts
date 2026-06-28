@@ -292,6 +292,8 @@ export const cmsAdminApi = {
     fetchApi<CmsPage>('/cms/admin/pages', { method: 'POST', body: JSON.stringify(data) }),
   updatePage: (id: string, data: Record<string, unknown>) =>
     fetchApi<CmsPage>(`/cms/admin/pages/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  resetTemplate: (id: string) =>
+    fetchApi<CmsPage>(`/cms/admin/pages/${id}/reset-template`, { method: 'POST' }),
   deletePage: (id: string) =>
     fetchApi<{ message: string }>(`/cms/admin/pages/${id}`, { method: 'DELETE' }),
   navigation: () => fetchApi<unknown[]>('/cms/admin/navigation'),

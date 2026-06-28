@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { cmsAdminApi, type CmsPage, type CmsSection } from '@/lib/api';
 import CmsSectionEditor, { defaultSection, SECTION_TYPES, type SectionDraft } from '@/components/admin/CmsSectionEditor';
+import { defaultSectionsForPage, registryBySlug } from '@/lib/sitePagesRegistry';
 import { ExternalLink, RefreshCw, Search } from 'lucide-react';
 
 type RegistryRow = {
@@ -39,6 +40,7 @@ export default function AdminCmsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const loadRegistry = async () => {
@@ -127,6 +129,8 @@ export default function AdminCmsPage() {
     if (!selectedSlug) return;
     const row = registry.find((r) => r.slug === selectedSlug);
     if (!row) return;
+    const def = registryBySlug(row.slug);
+    const templateSections = def ? defaultSectionsForPage(def) : [];
     setSaving(true);
     try {
       const created = await cmsAdminApi.createPage({
@@ -138,12 +142,14 @@ export default function AdminCmsPage() {
         seoDescription: `QuickDoctor — ${row.title}`,
         sections: editSections.length
           ? editSections
-          : [
-              defaultSection('HERO', 0),
-              defaultSection('TEXT', 1),
-              defaultSection('FAQ', 2),
-              defaultSection('CTA', 3),
-            ],
+          : templateSections.length
+            ? templateSections
+            : [
+                defaultSection('HERO', 0),
+                defaultSection('TEXT', 1),
+                defaultSection('FAQ', 2),
+                defaultSection('CTA', 3),
+              ],
       });
       setPage(created);
       setMessage('Page created — add sections and publish.');
@@ -152,6 +158,24 @@ export default function AdminCmsPage() {
       setMessage(e instanceof Error ? e.message : 'Create failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const resetTemplate = async () => {
+    if (!page) return;
+    if (!confirm('Replace all sections with the default template for this page? Unsaved edits will be lost.')) return;
+    setResetting(true);
+    setMessage(null);
+    try {
+      const updated = await cmsAdminApi.resetTemplate(page.id);
+      setPage(updated);
+      setEditSections(sectionsToDraft(updated.sections || []));
+      setMessage('Sections reset from template. Review and save if needed.');
+      await loadRegistry();
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Reset failed');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -301,6 +325,13 @@ export default function AdminCmsPage() {
                 )}
               </div>
 
+              {page && selectedSlug === 'home' && editSections.length < 7 && (
+                <p className="p-4 rounded-xl bg-amber-50 text-amber-900 text-sm font-medium">
+                  Home page is missing sections (stats, appointments, journey, etc.). Click{' '}
+                  <strong>Reset from template</strong> below to load the full homepage content.
+                </p>
+              )}
+
               {!page && (
                 <p className="p-4 rounded-xl bg-amber-50 text-amber-800 text-sm font-medium">
                   This page is not in the database yet. Click &quot;Create page&quot; or run &quot;Sync all pages&quot; first.
@@ -341,6 +372,17 @@ export default function AdminCmsPage() {
                 <button type="button" disabled={saving} onClick={save} className="px-6 py-3 bg-primary text-white rounded-xl font-black disabled:opacity-50">
                   {saving ? 'Saving…' : page ? 'Save changes' : 'Create page'}
                 </button>
+                {page && (
+                  <button
+                    type="button"
+                    disabled={resetting}
+                    onClick={resetTemplate}
+                    className="px-6 py-3 bg-slate-800 text-white rounded-xl font-black disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+                    Reset from template
+                  </button>
+                )}
                 {page && editStatus !== 'PUBLISHED' && (
                   <button
                     type="button"

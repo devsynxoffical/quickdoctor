@@ -8,51 +8,10 @@ export type SitePageDef = {
   pageType?: 'PAGE' | 'BLOG_POST';
 };
 
+import { getTemplateSections } from './pageTemplates';
+
 export function defaultSectionsForPage(def: SitePageDef) {
-  return [
-    {
-      type: 'HERO',
-      sortOrder: 0,
-      contentJson: {
-        headline: def.title,
-        subheadline: `Learn about ${def.title} at QuickDoctor — book online video consultations with licensed doctors.`,
-        ctaLabel: 'Book a consultation',
-        ctaHref: '/doctors',
-      },
-    },
-    {
-      type: 'TEXT',
-      sortOrder: 1,
-      contentJson: {
-        body: `Welcome to our ${def.title} page. Edit this content in Admin → CMS to update what patients see on ${def.path}.`,
-      },
-    },
-    {
-      type: 'FAQ',
-      sortOrder: 2,
-      contentJson: {
-        items: [
-          {
-            q: 'How do I book?',
-            a: 'Choose a doctor, pick a time slot, and complete payment to confirm your video consultation.',
-          },
-          {
-            q: 'Is this service available in Ireland?',
-            a: 'Yes — QuickDoctor connects you with registered doctors for online consultations.',
-          },
-        ],
-      },
-    },
-    {
-      type: 'CTA',
-      sortOrder: 3,
-      contentJson: {
-        text: 'Ready to speak with a doctor?',
-        label: 'Find a doctor',
-        href: '/doctors',
-      },
-    },
-  ];
+  return getTemplateSections(def);
 }
 
 const prescriptionPages: SitePageDef[] = [

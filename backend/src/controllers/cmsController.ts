@@ -8,6 +8,7 @@ import {
   defaultSectionsForPage,
   registryBySlug,
 } from '../lib/sitePagesRegistry';
+import { CmsSectionType, Prisma } from '@prisma/client';
 
 function paramId(id: string | string[] | undefined): string | undefined {
   if (id === undefined) return undefined;
@@ -324,9 +325,9 @@ export const adminSyncPages = async (req: AuthRequest, res: Response): Promise<v
           publishedAt: publish ? new Date() : null,
           sections: {
             create: sections.map((s, i) => ({
-              type: s.type as 'HERO' | 'TEXT' | 'HTML' | 'CTA' | 'FAQ' | 'FEATURES' | 'IMAGE',
+              type: s.type as CmsSectionType,
               sortOrder: s.sortOrder ?? i,
-              contentJson: s.contentJson,
+              contentJson: s.contentJson as Prisma.InputJsonValue,
             })),
           },
         },
@@ -342,6 +343,55 @@ export const adminSyncPages = async (req: AuthRequest, res: Response): Promise<v
     });
 
     res.json({ message: `Sync complete. Created ${created}, skipped ${skipped} existing.`, created, skipped });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const adminResetPageTemplate = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const id = paramId(req.params.id);
+    if (!id) {
+      res.status(400).json({ message: 'Page id required' });
+      return;
+    }
+
+    const existing = await prisma.cmsPage.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ message: 'Page not found' });
+      return;
+    }
+
+    const def = registryBySlug(existing.slug);
+    if (!def) {
+      res.status(400).json({ message: 'No template registered for this page slug' });
+      return;
+    }
+
+    const sections = defaultSectionsForPage(def);
+    await prisma.cmsSection.deleteMany({ where: { pageId: id } });
+    await prisma.cmsSection.createMany({
+      data: sections.map((s, i) => ({
+        pageId: id,
+        type: s.type as CmsSectionType,
+        sortOrder: s.sortOrder ?? i,
+        contentJson: s.contentJson as Prisma.InputJsonValue,
+      })),
+    });
+
+    const page = await prisma.cmsPage.findUnique({
+      where: { id },
+      include: { sections: { orderBy: { sortOrder: 'asc' } } },
+    });
+
+    await logAudit({
+      actorId: req.user?.id,
+      action: 'CMS_PAGE_TEMPLATE_RESET',
+      entityType: 'CmsPage',
+      entityId: id,
+    });
+
+    res.json(page);
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }

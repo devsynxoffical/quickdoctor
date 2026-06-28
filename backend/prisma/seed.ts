@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { homePageSections } from '../src/lib/pageTemplates';
 
 dotenv.config();
 
@@ -226,27 +227,12 @@ async function main() {
 
   await prisma.cmsSection.deleteMany({ where: { pageId: homePage.id } });
   await prisma.cmsSection.createMany({
-    data: [
-      {
-        pageId: homePage.id,
-        type: 'HERO',
-        sortOrder: 0,
-        contentJson: {
-          headline: 'Healthcare at your fingertips',
-          subheadline: 'Book a video consultation with an approved doctor in minutes.',
-          ctaLabel: 'Find a doctor',
-          ctaHref: '/doctors',
-        },
-      },
-      {
-        pageId: homePage.id,
-        type: 'TEXT',
-        sortOrder: 1,
-        contentJson: {
-          body: 'QuickDoctor connects patients with licensed physicians for secure online consultations.',
-        },
-      },
-    ],
+    data: homePageSections().map((s, i) => ({
+      pageId: homePage.id,
+      type: s.type as 'HERO' | 'STATS' | 'APPOINTMENTS' | 'FEATURES' | 'JOURNEY' | 'SECURITY' | 'CTA',
+      sortOrder: s.sortOrder ?? i,
+      contentJson: s.contentJson,
+    })),
   });
 
   await prisma.cmsPage.upsert({

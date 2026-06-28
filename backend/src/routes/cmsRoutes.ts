@@ -9,6 +9,7 @@ import {
   adminListNavigation,
   adminListPages,
   adminUpdatePage,
+  adminResetPageTemplate,
   adminUpdateSettings,
   adminUpsertNavigation,
   getPublicNavigation,
@@ -30,6 +31,7 @@ router.get('/admin/registry', authenticate, authorize(['ADMIN']), adminGetRegist
 router.post('/admin/pages/sync', authenticate, authorize(['ADMIN']), adminSyncPages);
 router.post('/admin/pages', authenticate, authorize(['ADMIN']), adminCreatePage);
 router.patch('/admin/pages/:id', authenticate, authorize(['ADMIN']), adminUpdatePage);
+router.post('/admin/pages/:id/reset-template', authenticate, authorize(['ADMIN']), adminResetPageTemplate);
 router.delete('/admin/pages/:id', authenticate, authorize(['ADMIN']), adminDeletePage);
 router.get('/admin/navigation', authenticate, authorize(['ADMIN']), adminListNavigation);
 router.put('/admin/navigation', authenticate, authorize(['ADMIN']), adminUpsertNavigation);
