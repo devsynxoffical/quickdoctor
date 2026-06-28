@@ -11,20 +11,20 @@ type LogoProps = {
 
 const sizes = {
   sm: { icon: 32, text: 'text-lg' },
-  md: { icon: 36, text: 'text-xl sm:text-2xl' },
+  md: { icon: 40, text: 'text-xl sm:text-2xl' },
   lg: { icon: 48, text: 'text-2xl sm:text-3xl' },
 };
 
-export default function Logo({ href = '/', className = '', showText = true, size = 'md' }: LogoProps) {
+export default function Logo({ href = '/', className = '', showText = false, size = 'md' }: LogoProps) {
   const s = sizes[size];
   const content = (
     <span className={`inline-flex items-center gap-2.5 group ${className}`}>
       <Image
         src="/logo.png"
-        alt="QuickDoctor"
+        alt="QuickDoctor home"
         width={s.icon}
         height={s.icon}
-        className="rounded-lg group-hover:scale-105 transition-transform shadow-md shadow-primary/20"
+        className="rounded-xl group-hover:scale-[1.03] transition-transform"
         priority
       />
       {showText && (
