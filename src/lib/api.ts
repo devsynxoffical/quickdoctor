@@ -1,5 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+const AUTH_EXEMPT = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+
 export async function fetchApi<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -29,6 +31,16 @@ export async function fetchApi<T = unknown>(endpoint: string, options: RequestIn
       data && typeof data === 'object' && data !== null && 'message' in data
         ? String((data as { message?: string }).message)
         : 'Something went wrong';
+
+    if (
+      response.status === 401 &&
+      typeof window !== 'undefined' &&
+      !AUTH_EXEMPT.some((path) => endpoint.startsWith(path))
+    ) {
+      const { handleAuthFailure } = await import('./auth');
+      handleAuthFailure();
+    }
+
     throw new Error(msg);
   }
 
@@ -51,6 +63,7 @@ export type AuthResponse = {
 };
 
 export const authApi = {
+  me: () => fetchApi<{ user: AuthUser }>('/auth/me'),
   login: (credentials: { email: string; password: string }) =>
     fetchApi<AuthResponse>('/auth/login', {
       method: 'POST',

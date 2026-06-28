@@ -53,6 +53,23 @@ export function clearSession() {
   localStorage.removeItem('pendingApproval');
 }
 
+/** Clear session and send user to the correct login when a token is invalid or expired. */
+export function handleAuthFailure() {
+  if (typeof window === 'undefined') return;
+  clearSession();
+  window.dispatchEvent(new Event('session-expired'));
+  const path = window.location.pathname;
+  if (path.startsWith('/admin')) {
+    window.location.href = '/admin';
+    return;
+  }
+  if (path.startsWith('/doctor')) {
+    window.location.href = '/doctor';
+    return;
+  }
+  window.location.href = getLoginUrl(path);
+}
+
 export function isLoggedIn(): boolean {
   return Boolean(getToken() && getStoredUser());
 }

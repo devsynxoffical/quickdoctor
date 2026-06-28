@@ -116,9 +116,9 @@ export const adminCreatePage = async (req: AuthRequest, res: Response): Promise<
         sections: sections?.length
           ? {
               create: sections.map((s: { type: string; sortOrder?: number; contentJson: unknown }, i: number) => ({
-                type: s.type,
+                type: s.type as CmsSectionType,
                 sortOrder: s.sortOrder ?? i,
-                contentJson: s.contentJson,
+                contentJson: s.contentJson as Prisma.InputJsonValue,
               })),
             }
           : undefined,
@@ -154,9 +154,9 @@ export const adminUpdatePage = async (req: AuthRequest, res: Response): Promise<
       await prisma.cmsSection.createMany({
         data: sections.map((s: { type: string; sortOrder?: number; contentJson: unknown }, i: number) => ({
           pageId: id,
-          type: s.type,
+          type: s.type as CmsSectionType,
           sortOrder: s.sortOrder ?? i,
-          contentJson: s.contentJson,
+          contentJson: s.contentJson as Prisma.InputJsonValue,
         })),
       });
     }
@@ -170,7 +170,7 @@ export const adminUpdatePage = async (req: AuthRequest, res: Response): Promise<
         seoTitle,
         seoDescription,
         status,
-        publishedAt: status === 'PUBLISHED' ? new Date() : undefined,
+        publishedAt: status === 'PUBLISHED' ? new Date() : status === 'DRAFT' ? null : undefined,
       },
       include: { sections: { orderBy: { sortOrder: 'asc' } } },
     });

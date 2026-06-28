@@ -82,6 +82,16 @@ export default function AdminCmsPage() {
     return map;
   }, [filtered]);
 
+  const applyPageToEditor = (found: CmsPage) => {
+    setPage(found);
+    setEditTitle(found.title);
+    setEditSlug(found.slug);
+    setEditStatus(found.status);
+    setEditSeoTitle(found.seoTitle || '');
+    setEditSeoDescription(found.seoDescription || '');
+    setEditSections(sectionsToDraft(found.sections || []));
+  };
+
   const openPage = async (row: RegistryRow) => {
     setSelectedSlug(row.slug);
     setMessage(null);
@@ -99,13 +109,7 @@ export default function AdminCmsPage() {
       const pages = await cmsAdminApi.pages();
       const found = pages.find((p) => p.id === row.id);
       if (!found) return;
-      setPage(found);
-      setEditTitle(found.title);
-      setEditSlug(found.slug);
-      setEditStatus(found.status);
-      setEditSeoTitle(found.seoTitle || '');
-      setEditSeoDescription(found.seoDescription || '');
-      setEditSections(sectionsToDraft(found.sections || []));
+      applyPageToEditor(found);
     } catch (e: unknown) {
       setMessage(e instanceof Error ? e.message : 'Could not load page');
     }
@@ -179,24 +183,30 @@ export default function AdminCmsPage() {
     }
   };
 
-  const save = async () => {
+  const save = async (options?: { publish?: boolean }) => {
     if (!page) {
       await createFromRegistry();
       return;
     }
+    const status = options?.publish ? 'PUBLISHED' : editStatus;
     setSaving(true);
     setMessage(null);
     try {
-      await cmsAdminApi.updatePage(page.id, {
+      const updated = await cmsAdminApi.updatePage(page.id, {
         title: editTitle,
         slug: editSlug,
         pageType: page.pageType,
-        status: editStatus,
+        status,
         seoTitle: editSeoTitle || undefined,
         seoDescription: editSeoDescription || undefined,
         sections: editSections.map((s, i) => ({ ...s, sortOrder: i })),
       });
-      setMessage('Page saved.');
+      applyPageToEditor(updated);
+      setMessage(
+        status === 'PUBLISHED'
+          ? 'Page published — changes are now live on the site.'
+          : 'Page saved as draft. Set status to Published to show changes on the live site.'
+      );
       await loadRegistry();
     } catch (e: unknown) {
       setMessage(e instanceof Error ? e.message : 'Save failed');
@@ -325,6 +335,12 @@ export default function AdminCmsPage() {
                 )}
               </div>
 
+              {page && editStatus === 'DRAFT' && (
+                <p className="p-4 rounded-xl bg-blue-50 text-blue-900 text-sm font-medium">
+                  This page is a <strong>draft</strong>. Visitors will not see your edits until you publish it.
+                </p>
+              )}
+
               {page && selectedSlug === 'home' && editSections.length < 7 && (
                 <p className="p-4 rounded-xl bg-amber-50 text-amber-900 text-sm font-medium">
                   Home page is missing sections (stats, appointments, journey, etc.). Click{' '}
@@ -342,8 +358,8 @@ export default function AdminCmsPage() {
                 <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title" className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none" />
                 <input value={editSlug} onChange={(e) => setEditSlug(e.target.value)} placeholder="CMS slug" className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none" />
                 <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none">
-                  <option value="DRAFT">Draft</option>
-                  <option value="PUBLISHED">Published</option>
+                  <option value="DRAFT">Draft (not visible on site)</option>
+                  <option value="PUBLISHED">Published (live on site)</option>
                 </select>
                 <input value={editSeoTitle} onChange={(e) => setEditSeoTitle(e.target.value)} placeholder="SEO title" className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none" />
                 <textarea value={editSeoDescription} onChange={(e) => setEditSeoDescription(e.target.value)} placeholder="SEO description" rows={2} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none md:col-span-2" />
@@ -369,7 +385,7 @@ export default function AdminCmsPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <button type="button" disabled={saving} onClick={save} className="px-6 py-3 bg-primary text-white rounded-xl font-black disabled:opacity-50">
+                <button type="button" disabled={saving} onClick={() => save()} className="px-6 py-3 bg-primary text-white rounded-xl font-black disabled:opacity-50">
                   {saving ? 'Saving…' : page ? 'Save changes' : 'Create page'}
                 </button>
                 {page && (
@@ -386,13 +402,11 @@ export default function AdminCmsPage() {
                 {page && editStatus !== 'PUBLISHED' && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setEditStatus('PUBLISHED');
-                      setTimeout(save, 0);
-                    }}
-                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-black"
+                    disabled={saving}
+                    onClick={() => save({ publish: true })}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-black disabled:opacity-50"
                   >
-                    Publish
+                    {saving ? 'Publishing…' : 'Publish'}
                   </button>
                 )}
               </div>

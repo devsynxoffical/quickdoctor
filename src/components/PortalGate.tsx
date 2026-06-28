@@ -12,6 +12,7 @@ import {
   getToken,
   isPendingApproval,
   normalizeRole,
+  StoredUser,
   saveSession,
 } from '@/lib/auth';
 
@@ -37,28 +38,46 @@ const PortalGate = ({
   const [wrongRole, setWrongRole] = useState<string | null>(null);
   const [form, setForm] = useState({ email: '', password: '' });
 
-  const checkAccess = () => {
-    const token = getToken();
-    const user = getStoredUser();
-    if (!token || !user) {
-      setUnlocked(false);
-      setWrongRole(null);
-      return;
-    }
-    const role = normalizeRole(user.role);
-    if (role === requiredRole) {
-      setUnlocked(true);
-      setWrongRole(null);
-    } else {
-      setUnlocked(false);
-      setWrongRole(role ?? 'UNKNOWN');
-    }
-  };
-
   useEffect(() => {
-    checkAccess();
-    setReady(true);
-  }, []);
+    const validate = async () => {
+      const token = getToken();
+      const user = getStoredUser();
+      if (!token || !user) {
+        setUnlocked(false);
+        setWrongRole(null);
+        setReady(true);
+        return;
+      }
+
+      try {
+        const { user: liveUser } = await authApi.me();
+        saveSession(token, liveUser as StoredUser);
+        const role = normalizeRole(liveUser.role);
+        if (role === requiredRole) {
+          setUnlocked(true);
+          setWrongRole(null);
+        } else {
+          setUnlocked(false);
+          setWrongRole(role ?? 'UNKNOWN');
+        }
+      } catch {
+        clearSession();
+        setUnlocked(false);
+        setWrongRole(null);
+      } finally {
+        setReady(true);
+      }
+    };
+
+    validate();
+
+    const onExpired = () => {
+      setUnlocked(false);
+      setWrongRole(null);
+    };
+    window.addEventListener('session-expired', onExpired);
+    return () => window.removeEventListener('session-expired', onExpired);
+  }, [requiredRole]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

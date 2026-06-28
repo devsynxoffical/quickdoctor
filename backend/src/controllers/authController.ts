@@ -5,6 +5,7 @@ import { Role } from '@prisma/client';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { sendEmail, passwordResetEmail } from '../services/emailService';
+import { AuthRequest } from '../middleware/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -213,6 +214,30 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     });
 
     res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+/** Validate the current JWT and return the signed-in user. */
+export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { patient: true, doctor: true },
+    });
+
+    if (!user || !user.isActive) {
+      res.status(401).json({ message: 'Invalid or expired token' });
+      return;
+    }
+
+    res.json({ user: publicUserPayload(user) });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }
