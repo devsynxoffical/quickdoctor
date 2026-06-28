@@ -102,6 +102,28 @@ export type AppointmentRow = {
   payment?: { status: string; amountCents: number };
 };
 
+export type PrescriptionRow = {
+  id: string;
+  medications: string;
+  dosage: string;
+  instructions?: string | null;
+  issuedAt: string;
+  appointment?: {
+    doctor?: { firstName?: string; lastName?: string; specialization?: string };
+  };
+};
+
+export type MedicalCertificateRow = {
+  id: string;
+  reason: string;
+  startDate: string;
+  endDate: string;
+  issuedAt: string;
+  appointment?: {
+    doctor?: { firstName?: string; lastName?: string };
+  };
+};
+
 export type NotificationRow = {
   id: string;
   type: string;
@@ -200,6 +222,11 @@ export const paymentApi = {
     fetchApi<{ status: string; appointment: AppointmentRow }>(
       `/payments/status?session_id=${sessionId}`
     ),
+};
+
+export const medicalApi = {
+  prescriptions: () => fetchApi<PrescriptionRow[]>('/medical/prescriptions/me'),
+  certificates: () => fetchApi<MedicalCertificateRow[]>('/medical/certificates/me'),
 };
 
 export const appointmentApi = {

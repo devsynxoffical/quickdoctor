@@ -1,44 +1,61 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
-import { 
-  Video, Calendar, Clock, ArrowRight, 
-  Activity, Heart, TrendingUp, CheckCircle2, FileText
+import {
+  Video,
+  Calendar,
+  ArrowRight,
+  Activity,
+  Pill,
+  CheckCircle2,
+  Clock,
+  Stethoscope,
 } from 'lucide-react';
+import { appointmentApi, medicalApi, type AppointmentRow, type PrescriptionRow } from '@/lib/api';
+import { getStoredUser } from '@/lib/auth';
+import { formatDoctorName, formatStatusLabel } from '@/lib/format';
 
-import { useEffect, useState } from 'react';
-import { appointmentApi } from '@/lib/api';
+function statusBadgeClass(status: string): string {
+  if (status === 'PENDING_PAYMENT') return 'bg-amber-100 text-amber-700';
+  if (status === 'PENDING') return 'bg-orange-100 text-orange-600';
+  if (status === 'CONFIRMED') return 'bg-blue-100 text-blue-600';
+  if (status === 'COMPLETED') return 'bg-green-100 text-green-600';
+  return 'bg-red-100 text-red-600';
+}
 
-const Overview = () => {
-  const [user, setUser] = useState<any>(null);
-  const [appointments, setAppointments] = useState<any[]>([]);
+export default function PatientDashboardOverview() {
+  const [user] = useState(() => getStoredUser());
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-
-    const fetchAppointments = async () => {
-      try {
-        const data = await appointmentApi.getAll();
-        setAppointments(data);
-      } catch (err) {
-        console.error('Failed to fetch appointments:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAppointments();
+    Promise.all([appointmentApi.getAll(), medicalApi.prescriptions()])
+      .then(([appts, rx]) => {
+        setAppointments(appts);
+        setPrescriptions(rx);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const nextAppointment = appointments.find(
-    (a) => a.status === 'CONFIRMED' || a.status === 'PENDING'
+  const now = Date.now();
+  const upcoming = appointments.filter(
+    (a) =>
+      ['CONFIRMED', 'PENDING', 'PENDING_PAYMENT'].includes(a.status) &&
+      new Date(a.dateTime).getTime() > now
   );
+  const nextAppointment = [...upcoming].sort(
+    (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+  )[0];
+  const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
+  const recentAppointments = [...appointments]
+    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
+    .slice(0, 5);
+  const recentPrescriptions = prescriptions.slice(0, 3);
 
   const joinConsultation = async () => {
     if (!nextAppointment) return;
@@ -54,177 +71,258 @@ const Overview = () => {
     }
   };
 
+  const stats = [
+    {
+      label: 'Upcoming',
+      value: String(upcoming.length),
+      unit: 'visits',
+      icon: Calendar,
+      color: 'text-blue-600',
+      bg: 'bg-blue-100',
+    },
+    {
+      label: 'Completed',
+      value: String(completedCount),
+      unit: 'consultations',
+      icon: CheckCircle2,
+      color: 'text-green-600',
+      bg: 'bg-green-100',
+    },
+    {
+      label: 'Prescriptions',
+      value: String(prescriptions.length),
+      unit: 'on file',
+      icon: Pill,
+      color: 'text-purple-600',
+      bg: 'bg-purple-100',
+    },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-10">
-        {/* Welcome Banner */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative bg-gradient-to-r from-primary to-accent rounded-[40px] p-10 text-white overflow-hidden medical-shadow"
         >
           <div className="relative z-10 max-w-xl">
-             <h1 className="text-4xl font-bold mb-4">Hello, {user?.firstName || 'User'}! 👋</h1>
-             <p className="text-white/80 text-lg mb-8">
-               {nextAppointment ? (
-                 `You have an upcoming consultation on ${new Date(nextAppointment.dateTime).toLocaleDateString()} at ${new Date(nextAppointment.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
-               ) : (
-                 "Access expert GP consultations, prescriptions, and specialist referrals from the comfort of your home."
-               )}
-             </p>
-             {nextAppointment && (
-               <button
-                 type="button"
-                 onClick={joinConsultation}
-                 className="px-8 py-4 bg-white text-primary rounded-2xl font-bold flex items-center gap-2 hover:scale-105 transition-all"
-               >
-                 <Video className="w-5 h-5" />
-                 Join Consultation
-               </button>
-             )}
+            <h1 className="text-4xl font-bold mb-4">
+              Hello, {user?.firstName || 'there'}!
+            </h1>
+            <p className="text-white/80 text-lg mb-8">
+              {loading ? (
+                'Loading your dashboard…'
+              ) : nextAppointment ? (
+                <>
+                  Your next consultation is with{' '}
+                  {formatDoctorName(nextAppointment.doctor)} on{' '}
+                  {new Date(nextAppointment.dateTime).toLocaleDateString()} at{' '}
+                  {new Date(nextAppointment.dateTime).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                  .
+                </>
+              ) : (
+                'Book a video GP consultation, view prescriptions, and manage appointments from here.'
+              )}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {nextAppointment?.status === 'CONFIRMED' && (
+                <button
+                  type="button"
+                  onClick={joinConsultation}
+                  className="px-8 py-4 bg-white text-primary rounded-2xl font-bold flex items-center gap-2 hover:scale-105 transition-all"
+                >
+                  <Video className="w-5 h-5" />
+                  Join consultation
+                </button>
+              )}
+              <Link
+                href="/doctors"
+                className="px-8 py-4 bg-white/15 text-white border border-white/30 rounded-2xl font-bold flex items-center gap-2 hover:bg-white/25 transition-all"
+              >
+                <Stethoscope className="w-5 h-5" />
+                Book a doctor
+              </Link>
+            </div>
           </div>
           <div className="absolute right-0 bottom-0 opacity-10 -mr-10 -mb-10">
-             <Activity className="w-80 h-80" />
+            <Activity className="w-80 h-80" />
           </div>
         </motion.div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-           {[
-             { label: 'Weight', value: '72', unit: 'kg', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-100' },
-             { label: 'Blood Pressure', value: '120/80', unit: 'mmHg', icon: Activity, color: 'text-red-600', bg: 'bg-red-100' },
-             { label: 'Heart Rate', value: '72', unit: 'bpm', icon: Heart, color: 'text-pink-600', bg: 'bg-pink-100' },
-           ].map((stat, i) => (
-             <motion.div 
-               key={i}
-               initial={{ opacity: 0, scale: 0.9 }}
-               animate={{ opacity: 1, scale: 1 }}
-               transition={{ delay: i * 0.1 }}
-               className="glass p-8 rounded-3xl medical-shadow flex items-center justify-between"
-             >
-               <div>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
-                  <div className="flex items-baseline gap-1">
-                     <span className="text-3xl font-black text-dark-slate dark:text-white">{stat.value}</span>
-                     <span className="text-xs font-bold text-slate-400">{stat.unit}</span>
-                  </div>
-               </div>
-                <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
-                   {React.createElement(stat.icon, { className: "w-6 h-6" })}
+          {stats.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.1 }}
+              className="glass p-8 rounded-3xl medical-shadow flex items-center justify-between"
+            >
+              <div>
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">
+                  {stat.label}
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-dark-slate dark:text-white">
+                    {loading ? '—' : stat.value}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">{stat.unit}</span>
                 </div>
-             </motion.div>
-           ))}
+              </div>
+              <div
+                className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}
+              >
+                <stat.icon className="w-6 h-6" />
+              </div>
+            </motion.div>
+          ))}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-10">
-           {/* Recent Appointments */}
-           <div className="lg:col-span-2 space-y-6">
-              <div className="flex items-center justify-between mb-2">
-                 <h2 className="text-2xl font-bold text-dark-slate dark:text-white">Recent Activities</h2>
-                 <button className="text-primary font-bold text-sm flex items-center gap-1 hover:underline">
-                    View All <ArrowRight className="w-4 h-4" />
-                 </button>
-              </div>
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-2xl font-bold text-dark-slate dark:text-white">
+                Recent appointments
+              </h2>
+              <Link
+                href="/dashboard/appointments"
+                className="text-primary font-bold text-sm flex items-center gap-1 hover:underline"
+              >
+                View all <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
 
+            {loading ? (
+              <p className="text-slate-400 py-8">Loading appointments…</p>
+            ) : recentAppointments.length > 0 ? (
               <div className="space-y-4">
-                 {appointments.length > 0 ? (
-                   appointments.map((item, i) => (
-                      <motion.div 
-                        key={item.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 + (i * 0.1) }}
-                        className="glass p-6 rounded-[32px] flex items-center justify-between hover:bg-white transition-all cursor-pointer group border-transparent hover:border-primary/20 border"
-                      >
-                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600">
-                               <Video className="w-6 h-6" />
-                            </div>
-                            <div>
-                               <h4 className="font-bold text-dark-slate dark:text-white group-hover:text-primary transition-colors">Consultation</h4>
-                               <p className="text-xs text-slate-500 font-medium">Dr. Johnson • {new Date(item.dateTime).toLocaleString()}</p>
-                            </div>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                              item.status === 'PENDING' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-600'
-                            }`}>
-                              {item.status}
-                            </span>
-                            <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-all translate-x-0 group-hover:translate-x-1" />
-                         </div>
-                      </motion.div>
-                   ))
-                 ) : (
-                   <div className="flex flex-col items-center justify-center py-12 px-6 rounded-[40px] bg-slate-100 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800">
-                      <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-4">
-                         <Calendar className="w-8 h-8 text-slate-400" />
+                {recentAppointments.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + i * 0.05 }}
+                  >
+                    <Link
+                      href="/dashboard/appointments"
+                      className="glass p-6 rounded-[32px] flex items-center justify-between hover:border-primary/20 border border-transparent transition-all group block"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600">
+                          <Video className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-dark-slate dark:text-white group-hover:text-primary transition-colors">
+                            {formatDoctorName(item.doctor)}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-medium">
+                            {item.doctor?.specialization || 'Video consultation'} •{' '}
+                            {new Date(item.dateTime).toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-                      <p className="font-bold text-slate-600 dark:text-slate-400 mb-2">No other activities found</p>
-                      <p className="text-xs text-slate-500 text-center max-w-[200px]">Book a new consultation or request a prescription to get started.</p>
-                   </div>
-                 )}
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${statusBadgeClass(item.status)}`}
+                        >
+                          {formatStatusLabel(item.status)}
+                        </span>
+                        <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-all" />
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
               </div>
-           </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-6 rounded-[40px] bg-slate-100 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800">
+                <Calendar className="w-12 h-12 text-slate-400 mb-4" />
+                <p className="font-bold text-slate-600 dark:text-slate-400 mb-2">
+                  No appointments yet
+                </p>
+                <p className="text-xs text-slate-500 text-center max-w-xs mb-4">
+                  Book your first video consultation with an approved GP.
+                </p>
+                <Link
+                  href="/doctors"
+                  className="px-6 py-3 bg-primary text-white rounded-xl text-sm font-black"
+                >
+                  Find a doctor
+                </Link>
+              </div>
+            )}
+          </div>
 
-           {/* Health Insights / Sidebar */}
-           <div className="space-y-8">
-              <h2 className="text-2xl font-bold text-dark-slate dark:text-white">Active Treatments</h2>
-              
-              <div className="glass p-8 rounded-[40px] medical-shadow">
-                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                       <Activity className="w-6 h-6" />
-                    </div>
-                    <div>
-                       <h4 className="font-bold">Post-flu Recovery</h4>
-                       <p className="text-xs text-slate-500">Day 5 of 7</p>
-                    </div>
-                 </div>
-                 
-                 <div className="space-y-6">
-                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                       <motion.div 
-                         initial={{ width: 0 }}
-                         animate={{ width: '70%' }}
-                         className="h-full bg-blue-500" 
-                       />
-                    </div>
-                    
-                    <div className="space-y-4">
-                       <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Stay hydrated (2L water)</span>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Take Amoxicillin 500mg</span>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 rounded-full border-2 border-slate-200" />
-                          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Rest for 8 hours</span>
-                       </div>
-                    </div>
-                 </div>
-              </div>
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-dark-slate dark:text-white">
+                Prescriptions
+              </h2>
+              <Link
+                href="/dashboard/records"
+                className="text-primary font-bold text-sm hover:underline"
+              >
+                View all
+              </Link>
+            </div>
 
-              <div className="rounded-[40px] bg-slate-900 p-8 text-white relative overflow-hidden medical-shadow">
-                 <div className="relative z-10">
-                    <h4 className="text-xl font-bold mb-2">Need Help?</h4>
-                    <p className="text-xs text-slate-400 mb-6 leading-relaxed">Our support team and doctors are ready to help you with any medical concerns 24/7.</p>
-                    <button className="w-full py-4 bg-primary rounded-2xl text-sm font-bold medical-shadow hover:scale-105 transition-all">
-                       Contact Support
-                    </button>
-                 </div>
-                 <div className="absolute -right-4 -bottom-4 opacity-10">
-                    <Heart className="w-32 h-32" />
-                 </div>
+            <div className="glass p-8 rounded-[40px] medical-shadow space-y-4">
+              {loading ? (
+                <p className="text-sm text-slate-400">Loading…</p>
+              ) : recentPrescriptions.length > 0 ? (
+                recentPrescriptions.map((rx) => (
+                  <div
+                    key={rx.id}
+                    className="pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Pill className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-sm">{rx.medications}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {rx.dosage} • {new Date(rx.issuedAt).toLocaleDateString()}
+                        </p>
+                        {rx.instructions && (
+                          <p className="text-xs text-slate-400 mt-1">{rx.instructions}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <Pill className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-500">No prescriptions yet</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Prescriptions from your consultations will appear here.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[40px] bg-slate-900 p-8 text-white relative overflow-hidden medical-shadow">
+              <div className="relative z-10">
+                <h4 className="text-xl font-bold mb-2">Need help?</h4>
+                <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                  Contact our support team for booking, billing, or account questions.
+                </p>
+                <a
+                  href="mailto:support@quickdoctor.ie"
+                  className="w-full py-4 bg-primary rounded-2xl text-sm font-bold medical-shadow hover:opacity-90 transition-all block text-center"
+                >
+                  support@quickdoctor.ie
+                </a>
               </div>
-           </div>
+              <div className="absolute -right-4 -bottom-4 opacity-10">
+                <Clock className="w-32 h-32" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </DashboardLayout>
   );
-};
-
-export default Overview;
+}

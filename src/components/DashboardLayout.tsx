@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  LayoutDashboard, Calendar, FileText, Pill, 
+  LayoutDashboard, Calendar, FileText,
   Settings, LogOut, Search, Stethoscope,
   ChevronRight, User, Menu, X
 } from 'lucide-react';
@@ -30,6 +30,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [user, setUser] = React.useState<any>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
@@ -57,6 +58,11 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push('/doctors');
   };
 
   return (
@@ -112,13 +118,16 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         <div className="p-6">
-          <div className="bg-gradient-to-br from-primary to-accent rounded-3xl p-5 text-white medical-shadow">
-            <p className="text-xs font-bold opacity-80 mb-1">Upgrade Plan</p>
-            <p className="text-sm font-black mb-4">Get Unlimited Video Calls</p>
-            <button className="w-full py-2 bg-white text-primary rounded-xl text-xs font-black hover:bg-slate-50 transition-colors">
-              Upgrade Now
-            </button>
-          </div>
+          <Link
+            href="/doctors"
+            className="block bg-gradient-to-br from-primary to-accent rounded-3xl p-5 text-white medical-shadow hover:opacity-95 transition-opacity"
+          >
+            <p className="text-xs font-bold opacity-80 mb-1">Need a GP?</p>
+            <p className="text-sm font-black mb-4">Book a video consultation</p>
+            <span className="w-full py-2 bg-white text-primary rounded-xl text-xs font-black block text-center">
+              Find a doctor
+            </span>
+          </Link>
         </div>
       </aside>
 
@@ -130,14 +139,16 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
              <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400">
                <Menu className="w-6 h-6" />
              </button>
-             <div className="relative w-full hidden sm:block">
+             <form onSubmit={handleSearch} className="relative w-full hidden sm:block">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <input 
                   type="text" 
-                  placeholder="Search appointments, records, or doctors..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Find a doctor to book…" 
                   className="w-full pl-12 pr-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border-none text-sm focus:ring-2 focus:ring-primary transition-all"
                 />
-             </div>
+             </form>
              {/* Logo for mobile only */}
              <div className="flex items-center gap-2 sm:hidden">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">

@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
-import { Calendar, Video, Clock, ArrowRight, Plus, X } from 'lucide-react';
+import { Calendar, Video, Clock, Plus, X } from 'lucide-react';
 import { appointmentApi, paymentApi, reviewApi, type AppointmentRow } from '@/lib/api';
+import { formatDoctorName, formatStatusLabel } from '@/lib/format';
 
 function formatPrice(cents: number) {
   return `€${(cents / 100).toFixed(2)}`;
@@ -256,16 +257,19 @@ function AppointmentsContent() {
                                   : 'bg-red-100 text-red-600'
                         }`}
                       >
-                        {appt.status.replace('_', ' ')}
+                        {formatStatusLabel(appt.status)}
                       </span>
                     </div>
                     <h3 className="text-2xl font-black text-dark-slate dark:text-white group-hover:text-primary transition-colors">
                       Video Consultation
                     </h3>
                     <p className="text-sm font-bold text-slate-500 mt-1">
-                      With Dr. {appt.doctor?.lastName || 'TBD'} •{' '}
+                      With {formatDoctorName(appt.doctor)} •{' '}
                       {appt.doctor?.specialization || 'GP'}
                     </p>
+                    {appt.notes && (
+                      <p className="text-xs text-slate-400 mt-2">Note: {appt.notes}</p>
+                    )}
                   </div>
                 </div>
 
@@ -300,35 +304,60 @@ function AppointmentsContent() {
                     )}
                   </div>
                   <div className="flex gap-3">
+                    {appt.status === 'PENDING_PAYMENT' && (
+                      <>
+                        <Link
+                          href={`/doctors/${appt.doctor?.id || ''}`}
+                          className="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest"
+                        >
+                          Complete booking
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => cancelPending(appt.id)}
+                          className="px-6 py-3 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-black uppercase"
+                        >
+                          Cancel hold
+                        </button>
+                      </>
+                    )}
+                    {appt.status === 'COMPLETED' && (
+                      <Link
+                        href="/dashboard/records"
+                        className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-black uppercase tracking-widest"
+                      >
+                        View records
+                      </Link>
+                    )}
                     {appt.status === 'CONFIRMED' && (
                       <button
                         type="button"
                         onClick={() => joinCall(appt.id)}
                         className="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest"
                       >
-                        Join Call
+                        Join call
                       </button>
                     )}
-                    {appt.status === 'PENDING_PAYMENT' && (
-                      <button
-                        type="button"
-                        onClick={() => cancelPending(appt.id)}
-                        className="px-6 py-3 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-black uppercase"
-                      >
-                        Cancel hold
-                      </button>
+                    {!['PENDING_PAYMENT', 'CONFIRMED', 'COMPLETED'].includes(appt.status) && (
+                      <span className="text-xs text-slate-400 font-bold uppercase">
+                        {formatStatusLabel(appt.status)}
+                      </span>
                     )}
-                    <button
-                      type="button"
-                      className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500"
-                    >
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
                   </div>
                 </div>
                 </div>
                 {appt.status === 'COMPLETED' && (
-                  <AppointmentReviewForm appointmentId={appt.id} />
+                  <>
+                    {appt.clinicalNotes && (
+                      <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">
+                          Doctor notes
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">{appt.clinicalNotes}</p>
+                      </div>
+                    )}
+                    <AppointmentReviewForm appointmentId={appt.id} />
+                  </>
                 )}
               </motion.div>
             ))
