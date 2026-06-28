@@ -16,6 +16,8 @@ const DoctorOverview = () => {
   const [stats, setStats] = useState({ today: 0, pending: 0, earnings: 0 });
   const [rating, setRating] = useState<{ value: string; count: number }>({ value: '—', count: 0 });
   const [queue, setQueue] = useState<any[]>([]);
+  const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [profileComplete, setProfileComplete] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,9 +40,17 @@ const DoctorOverview = () => {
             ['CONFIRMED', 'PENDING'].includes(a.status)
           )
         );
+        const now = Date.now();
+        setUpcoming(
+          appointments
+            .filter((a: any) => new Date(a.dateTime).getTime() > now && a.status !== 'CANCELLED')
+            .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+            .slice(0, 5)
+        );
 
         try {
-          const profile = (await doctorProfileApi.get()) as { id?: string };
+          const profile = (await doctorProfileApi.get()) as { id?: string; profileComplete?: boolean };
+          setProfileComplete(Boolean(profile?.profileComplete));
           if (profile?.id) {
             const rev = await reviewApi.forDoctor(profile.id);
             if (rev.averageRating != null && rev.count > 0) {
@@ -66,6 +76,23 @@ const DoctorOverview = () => {
 
   return (
           <div className="space-y-10">
+        {!profileComplete && (
+          <div className="glass p-6 rounded-3xl border-2 border-secondary/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="font-black text-dark-slate dark:text-white">Complete your doctor profile</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Add your bio, fees, and availability so patients can find and book you.
+              </p>
+            </div>
+            <Link
+              href="/doctor/settings"
+              className="px-6 py-3 bg-secondary text-white rounded-xl font-black text-sm whitespace-nowrap"
+            >
+              Go to settings
+            </Link>
+          </div>
+        )}
+
         {/* Header Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
            {[
@@ -159,21 +186,34 @@ const DoctorOverview = () => {
               <h2 className="text-2xl font-bold">Upcoming Schedule</h2>
               <div className="glass p-8 rounded-[40px] medical-shadow">
                  <div className="space-y-6">
-                    {[
-                      { time: '16:00', title: 'Clinical Team Meeting', type: 'Meeting' },
-                      { time: '17:30', title: 'Research Review', type: 'Admin' },
-                      { time: '19:00', title: 'End for Day', type: 'Status' },
-                    ].map((s, i) => (
-                       <div key={i} className="flex gap-4">
-                          <div className="text-sm font-black text-secondary w-12">{s.time}</div>
-                          <div className="flex-1 pb-6 border-l-2 border-slate-100 dark:border-slate-800 pl-6 relative">
-                             <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-secondary" />
-                             <h5 className="font-bold text-sm mb-1">{s.title}</h5>
-                             <p className="text-[10px] text-slate-400 uppercase tracking-widest">{s.type}</p>
+                    {upcoming.length > 0 ? (
+                      upcoming.map((a) => (
+                        <div key={a.id} className="flex gap-4">
+                          <div className="text-sm font-black text-secondary w-12">
+                            {new Date(a.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
-                       </div>
-                    ))}
+                          <div className="flex-1 pb-6 border-l-2 border-slate-100 dark:border-slate-800 pl-6 relative">
+                            <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-secondary" />
+                            <h5 className="font-bold text-sm mb-1">
+                              {a.patient?.firstName} {a.patient?.lastName}
+                            </h5>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                              {a.status.replace('_', ' ')}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500 font-medium">No upcoming appointments.</p>
+                    )}
                  </div>
+                 <Link
+                   href="/doctor/settings"
+                   className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-secondary hover:underline"
+                 >
+                   Manage availability
+                   <ArrowRight className="w-4 h-4" />
+                 </Link>
               </div>
 
               {/* Safety Warning */}

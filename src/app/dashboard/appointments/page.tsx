@@ -75,6 +75,7 @@ function AppointmentsContent() {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBookBanner, setShowBookBanner] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -104,6 +105,23 @@ function AppointmentsContent() {
     }
     if (searchParams.get('booked') === '1') {
       load();
+    }
+    if (searchParams.get('payment') === 'cancelled') {
+      const appointmentId = searchParams.get('appointmentId');
+      if (appointmentId) {
+        appointmentApi
+          .cancelPending(appointmentId)
+          .then(() => {
+            setCancelNotice('Payment was cancelled. Your appointment hold has been released.');
+            load();
+          })
+          .catch(() => {
+            setCancelNotice('Payment was cancelled.');
+            load();
+          });
+      } else {
+        setCancelNotice('Payment was cancelled.');
+      }
     }
     const confirmDevId = searchParams.get('confirmDev');
     const joinId = searchParams.get('join');
@@ -161,6 +179,24 @@ function AppointmentsContent() {
             Book New Appointment
           </Link>
         </div>
+
+        {cancelNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass p-6 rounded-3xl border-2 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 flex items-center justify-between gap-4"
+          >
+            <p className="font-bold text-amber-800 dark:text-amber-200">{cancelNotice}</p>
+            <button
+              type="button"
+              onClick={() => setCancelNotice(null)}
+              className="p-2 text-amber-600"
+              aria-label="Dismiss"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
 
         {showBookBanner && (
           <motion.div

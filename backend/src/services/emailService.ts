@@ -99,6 +99,15 @@ export function doctorApprovedEmail(params: {
   );
 }
 
+export function passwordResetEmail(params: { resetUrl: string }) {
+  return emailLayout(
+    'Reset your password',
+    `<p>You requested a password reset for your QuickDoctor account.</p>
+     <p><a href="${params.resetUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Reset password</a></p>
+     <p style="color:#64748b;font-size:14px">This link expires in 1 hour. If you did not request this, you can ignore this email.</p>`
+  );
+}
+
 export function doctorRejectedEmail(params: {
   firstName: string;
   reason: string;
