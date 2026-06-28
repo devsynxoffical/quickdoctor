@@ -102,19 +102,22 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
         },
       });
 
-      res.status(503).json({
+      res.status(200).json({
         message:
-          'Stripe is not configured. Set STRIPE_SECRET_KEY in backend/.env. Appointment created in pending state for testing.',
+          'Stripe is not configured. Complete booking in test mode or set STRIPE_SECRET_KEY in backend/.env.',
         appointmentId: appointment.id,
         testMode: true,
-        devConfirmUrl: `${frontendUrl}/dashboard/appointments?confirmDev=${appointment.id}`,
+        devConfirmUrl: `${frontendUrl.split(',')[0].trim()}/dashboard/appointments?confirmDev=${appointment.id}`,
       });
       return;
     }
 
+    const patientUser = await prisma.user.findUnique({ where: { id: userId! } });
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
+      customer_email: patientUser?.email,
       line_items: [
         {
           price_data: {
@@ -157,10 +160,10 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
   }
 };
 
-/** Dev-only: confirm appointment without Stripe when keys missing */
+/** Confirm appointment without Stripe when Stripe keys are not configured */
 export const devConfirmPayment = async (req: AuthRequest, res: Response): Promise<void> => {
-  if (process.env.NODE_ENV === 'production') {
-    res.status(404).json({ message: 'Not available' });
+  if (getStripe()) {
+    res.status(400).json({ message: 'Stripe is configured — use checkout instead' });
     return;
   }
 

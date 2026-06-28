@@ -106,10 +106,19 @@ function AppointmentsContent() {
       load();
     }
     const confirmDevId = searchParams.get('confirmDev');
+    const joinId = searchParams.get('join');
     if (confirmDevId) {
       paymentApi
         .devConfirm(confirmDevId)
         .then(() => load())
+        .catch(console.error);
+    }
+    if (joinId) {
+      appointmentApi
+        .getJoin(joinId)
+        .then((r) => {
+          if (r.canJoin && r.url) window.open(r.url, '_blank', 'noopener,noreferrer');
+        })
         .catch(console.error);
     }
   }, [searchParams]);

@@ -36,19 +36,29 @@ function DoctorBookingContent() {
   }, [id]);
 
   useEffect(() => {
+    const dateParam = searchParams.get('date');
+    if (dateParam) setDate(dateParam);
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!date) {
       setSlots([]);
       return;
     }
+    const slotParam = searchParams.get('slot');
     publicDoctorApi
       .slots(id, date)
       .then((r) => {
         setSlots(r.slots);
         setFeeCents(r.consultationFeeCents);
-        setSelectedSlot('');
+        if (slotParam && r.slots.includes(slotParam)) {
+          setSelectedSlot(slotParam);
+        } else {
+          setSelectedSlot('');
+        }
       })
       .catch(() => setSlots([]));
-  }, [id, date]);
+  }, [id, date, searchParams]);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');

@@ -36,7 +36,23 @@ const Overview = () => {
     fetchAppointments();
   }, []);
 
-  const nextAppointment = appointments.find(a => a.status === 'PENDING' || a.status === 'CONFIRMED');
+  const nextAppointment = appointments.find(
+    (a) => a.status === 'CONFIRMED' || a.status === 'PENDING'
+  );
+
+  const joinConsultation = async () => {
+    if (!nextAppointment) return;
+    try {
+      const r = await appointmentApi.getJoin(nextAppointment.id);
+      if (r.canJoin && r.url) {
+        window.open(r.url, '_blank', 'noopener,noreferrer');
+      } else {
+        alert(r.message || 'Video join is not available yet');
+      }
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Could not join');
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -57,7 +73,11 @@ const Overview = () => {
                )}
              </p>
              {nextAppointment && (
-               <button className="px-8 py-4 bg-white text-primary rounded-2xl font-bold flex items-center gap-2 hover:scale-105 transition-all">
+               <button
+                 type="button"
+                 onClick={joinConsultation}
+                 className="px-8 py-4 bg-white text-primary rounded-2xl font-bold flex items-center gap-2 hover:scale-105 transition-all"
+               >
                  <Video className="w-5 h-5" />
                  Join Consultation
                </button>

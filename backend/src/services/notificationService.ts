@@ -1,5 +1,14 @@
 import prisma from '../config/db';
-import { sendEmail } from './emailService';
+import {
+  sendEmail,
+  bookingConfirmedEmail,
+  doctorNewBookingEmail,
+} from './emailService';
+
+function frontendBase() {
+  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return raw.split(',')[0].trim().replace(/\/$/, '');
+}
 
 export async function createNotification(params: {
   userId: string;
@@ -33,17 +42,21 @@ export async function notifyBookingConfirmed(appointmentId: string) {
     where: { id: appointmentId },
     include: {
       patient: { include: { user: true } },
-      doctor: true,
+      doctor: { include: { user: true } },
     },
   });
 
   if (!appointment?.patient?.user) return;
 
-  const doctorName = `Dr. ${appointment.doctor.lastName}`;
+  const doctorName = `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`;
+  const patientName = `${appointment.patient.firstName} ${appointment.patient.lastName}`;
   const when = new Date(appointment.dateTime).toLocaleString();
-  const joinLink = appointment.zoomJoinUrlPatient
-    ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/appointments`
-    : undefined;
+  const base = frontendBase();
+  const dashboardUrl = `${base}/dashboard/appointments`;
+  const consultationUrl = `${base}/doctor/consultations/${appointment.id}`;
+
+  const patientJoinUrl = appointment.zoomJoinUrlPatient;
+  const doctorHostUrl = appointment.zoomJoinUrlHost;
 
   await createNotification({
     userId: appointment.patient.user.id,
@@ -54,20 +67,36 @@ export async function notifyBookingConfirmed(appointmentId: string) {
     email: {
       to: appointment.patient.user.email,
       subject: 'Appointment confirmed — QuickDoctor',
-      html: `<p>Hi ${appointment.patient.firstName},</p><p>Your consultation with ${doctorName} is confirmed for ${when}.</p>`,
+      html: bookingConfirmedEmail({
+        patientFirstName: appointment.patient.firstName,
+        doctorName,
+        dateTime: when,
+        joinUrl: patientJoinUrl,
+        password: appointment.zoomPassword,
+        dashboardUrl,
+      }),
     },
   });
 
-  const doctorUser = await prisma.user.findUnique({
-    where: { id: appointment.doctor.userId },
-  });
+  const doctorUser = appointment.doctor.user;
   if (doctorUser) {
     await createNotification({
       userId: doctorUser.id,
       type: 'NEW_BOOKING',
       title: 'New appointment booked',
-      body: `${appointment.patient.firstName} ${appointment.patient.lastName} booked for ${when}.`,
+      body: `${patientName} booked for ${when}.`,
       link: `/doctor/consultations/${appointment.id}`,
+      email: {
+        to: doctorUser.email,
+        subject: 'New patient booking — QuickDoctor',
+        html: doctorNewBookingEmail({
+          doctorName: appointment.doctor.firstName,
+          patientName,
+          dateTime: when,
+          consultationUrl,
+          hostJoinUrl: doctorHostUrl,
+        }),
+      },
     });
   }
 }

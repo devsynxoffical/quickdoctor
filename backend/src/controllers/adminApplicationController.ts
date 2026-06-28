@@ -2,6 +2,12 @@ import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
+import { sendEmail, doctorApprovedEmail, doctorRejectedEmail } from '../services/emailService';
+
+function frontendBase() {
+  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return raw.split(',')[0].trim().replace(/\/$/, '');
+}
 
 export const listApplications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -90,6 +96,18 @@ export const approveApplication = async (req: AuthRequest, res: Response): Promi
       }
     });
 
+    const base = frontendBase();
+    const doctor = application.user.doctor;
+    await sendEmail({
+      to: application.user.email,
+      subject: 'Your QuickDoctor application was approved',
+      html: doctorApprovedEmail({
+        firstName: doctor?.firstName || 'Doctor',
+        portalUrl: `${base}/doctor`,
+        settingsUrl: `${base}/doctor/settings`,
+      }),
+    });
+
     res.json({ message: 'Doctor approved. They can now sign in to the doctor portal.' });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
@@ -102,7 +120,10 @@ export const rejectApplication = async (req: AuthRequest, res: Response): Promis
     const { rejectionReason } = req.body;
     const adminId = req.user?.id;
 
-    const application = await prisma.doctorApplication.findUnique({ where: { id } });
+    const application = await prisma.doctorApplication.findUnique({
+      where: { id },
+      include: { user: { include: { doctor: true } } },
+    });
     if (!application) {
       res.status(404).json({ message: 'Application not found' });
       return;
@@ -127,6 +148,18 @@ export const rejectApplication = async (req: AuthRequest, res: Response): Promis
         where: { userId: application.userId },
         data: { status: 'REJECTED' },
       });
+    });
+
+    const base = frontendBase();
+    const reason = rejectionReason || 'Application not approved';
+    await sendEmail({
+      to: application.user.email,
+      subject: 'Update on your QuickDoctor application',
+      html: doctorRejectedEmail({
+        firstName: application.user.doctor?.firstName || 'Doctor',
+        reason,
+        applyUrl: `${base}/doctor/apply`,
+      }),
     });
 
     res.json({ message: 'Application rejected' });

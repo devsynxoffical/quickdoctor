@@ -28,13 +28,22 @@ async function getZoomAccessToken(): Promise<string | null> {
 }
 
 function devMeetingUrls(appointmentId: string) {
-  const base = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const base = frontendBase();
   return {
     meetingId: `dev-${appointmentId.slice(0, 8)}`,
     joinUrlPatient: `${base}/dashboard/appointments?join=${appointmentId}`,
     joinUrlHost: `${base}/doctor/consultations/${appointmentId}`,
     password: 'dev123',
   };
+}
+
+function frontendBase() {
+  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return raw.split(',')[0].trim().replace(/\/$/, '');
+}
+
+function allowDevZoomFallback() {
+  return process.env.NODE_ENV !== 'production' || process.env.ALLOW_ZOOM_DEV_FALLBACK === 'true';
 }
 
 export async function ensureZoomMeetingForAppointment(appointmentId: string) {
@@ -53,6 +62,10 @@ export async function ensureZoomMeetingForAppointment(appointmentId: string) {
   const token = await getZoomAccessToken();
 
   if (!token) {
+    if (!allowDevZoomFallback()) {
+      console.error('[zoom] Missing credentials in production — no meeting created for', appointmentId);
+      return appointment;
+    }
     const dev = devMeetingUrls(appointmentId);
     return prisma.appointment.update({
       where: { id: appointmentId },
@@ -86,6 +99,9 @@ export async function ensureZoomMeetingForAppointment(appointmentId: string) {
 
   if (!res.ok) {
     console.warn('Zoom meeting create failed:', await res.text());
+    if (!allowDevZoomFallback()) {
+      return appointment;
+    }
     const dev = devMeetingUrls(appointmentId);
     return prisma.appointment.update({
       where: { id: appointmentId },
