@@ -209,7 +209,6 @@ async function main() {
       update: { rating: 5 },
     });
   }
-}
 
   const homePage = await prisma.cmsPage.upsert({
     where: { slug: 'home' },

@@ -23,7 +23,12 @@ WEB_ROOT="/var/www/quickdoctor-web"
 DB_NAME="quickdoctor"
 DB_USER="quickdoctor"
 DB_PASS="${DB_PASS:-$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)}"
-SECRETS="/home/${APP_USER}/.quickdoctor-deploy-secrets"
+APP_HOME="$(getent passwd "${APP_USER}" | cut -d: -f6)"
+if [ -z "$APP_HOME" ]; then
+  echo "User '${APP_USER}' does not exist. Create it first, e.g.: adduser ${APP_USER}"
+  exit 1
+fi
+SECRETS="${APP_HOME}/.quickdoctor-deploy-secrets"
 
 echo "==> System packages..."
 export DEBIAN_FRONTEND=noninteractive
