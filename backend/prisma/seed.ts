@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
@@ -231,7 +231,7 @@ async function main() {
       pageId: homePage.id,
       type: s.type as 'HERO' | 'STATS' | 'APPOINTMENTS' | 'FEATURES' | 'JOURNEY' | 'SECURITY' | 'CTA',
       sortOrder: s.sortOrder ?? i,
-      contentJson: s.contentJson,
+      contentJson: s.contentJson as Prisma.InputJsonValue,
     })),
   });
 
