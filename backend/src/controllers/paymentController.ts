@@ -6,7 +6,11 @@ import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+function frontendBase() {
+  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return raw.split(',')[0].trim().replace(/\/$/, '');
+}
 
 function getStripe() {
   if (!stripeSecret) return null;
@@ -107,7 +111,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
           'Stripe is not configured. Complete booking in test mode or set STRIPE_SECRET_KEY in backend/.env.',
         appointmentId: appointment.id,
         testMode: true,
-        devConfirmUrl: `${frontendUrl.split(',')[0].trim()}/dashboard/appointments?confirmDev=${appointment.id}`,
+        devConfirmUrl: `${frontendBase()}/dashboard/appointments?confirmDev=${appointment.id}`,
       });
       return;
     }
@@ -136,8 +140,8 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
         patientId: patient.id,
         doctorId: doctor.id,
       },
-      success_url: `${frontendUrl}/dashboard/appointments?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${frontendUrl}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
+      success_url: `${frontendBase()}/dashboard/appointments?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendBase()}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
     });
 
     await prisma.payment.create({

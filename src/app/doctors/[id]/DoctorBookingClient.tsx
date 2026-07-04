@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { publicDoctorApi, paymentApi, type PublicDoctor } from '@/lib/api';
-import { getToken } from '@/lib/auth';
+import { getToken, getStoredUser, normalizeRole, getLoginUrl, clearSession } from '@/lib/auth';
 import { Calendar, ArrowLeft, CreditCard } from 'lucide-react';
 import DoctorStars from '@/components/DoctorStars';
 
@@ -93,6 +93,14 @@ function DoctorBookingContent() {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slotHint, setSlotHint] = useState<string | null>(null);
+  const [nonPatientRole, setNonPatientRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const role = normalizeRole(getStoredUser()?.role);
+    if (role && role !== 'PATIENT') {
+      setNonPatientRole(role);
+    }
+  }, []);
 
   useEffect(() => {
     publicDoctorApi
@@ -203,6 +211,14 @@ function DoctorBookingContent() {
 
   const handlePay = async () => {
     if (!selectedSlot) return;
+    if (nonPatientRole) {
+      setError(
+        nonPatientRole === 'DOCTOR'
+          ? 'You are signed in as a doctor. Patient bookings require a patient account.'
+          : 'You are signed in as an admin. Patient bookings require a patient account.'
+      );
+      return;
+    }
     const token = getToken();
     if (!token) {
       router.push(`/login?redirect=${encodeURIComponent(`/doctors/${id}?date=${date}&slot=${selectedSlot}`)}`);
@@ -233,8 +249,10 @@ function DoctorBookingContent() {
     }
   };
 
-  const payDisabled = paying || !selectedSlot;
-  const payHint = !selectedSlot
+  const payDisabled = paying || !selectedSlot || Boolean(nonPatientRole);
+  const payHint = nonPatientRole
+    ? 'Sign in with a patient account to book and pay'
+    : !selectedSlot
     ? !date
       ? 'Choose a date to see available times'
       : slotsLoading
@@ -347,6 +365,26 @@ function DoctorBookingContent() {
             onChange={(e) => setNotes(e.target.value)}
             className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none h-24"
           />
+
+          {nonPatientRole && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm space-y-3">
+              <p className="font-bold">
+                You&apos;re signed in as a {nonPatientRole.toLowerCase()}. Only patients can book consultations.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={getLoginUrl(`/doctors/${id}?date=${date}&slot=${selectedSlot}`)}
+                  onClick={() => clearSession()}
+                  className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-black"
+                >
+                  Sign in as patient
+                </Link>
+                <Link href="/register" className="px-4 py-2 bg-white border border-amber-300 rounded-xl text-xs font-black">
+                  Create patient account
+                </Link>
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600 font-bold">{error}</p>}
 
