@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
@@ -157,6 +158,42 @@ export default function MaleHairLossPage() {
     finasterideUsage &&
     (!showEffectivenessQuestion || finasterideEffective);
   const canSubmitRequest = confirmAccuracy && confirmSafety;
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'male-hair-loss',
+      serviceName: 'Male Hair Loss',
+      payload: {
+      patientFor,
+      unsuitableAck,
+      serviceAck,
+      hairPattern,
+      birthSex,
+      age,
+      finasterideAck,
+      finasterideStrength,
+      hairLossStart,
+      bodyHairLoss,
+      scalpCondition,
+      conditions,
+      lowMoodHistory,
+      prostateFinasteride,
+      finasterideUsage,
+      finasterideEffective,
+      offLicenceChoice,
+      offLicenceUnsuitableAck,
+      hairLossUnsuitableAck,
+      bodyUnsuitableAck,
+      scalpUnsuitableAck,
+      conditionsUnsuitableAck,
+      moodChoice,
+      moodUnsuitableAck,
+      prostateUnsuitableAck,
+      confirmAccuracy,
+      confirmSafety,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
@@ -937,7 +974,7 @@ export default function MaleHairLossPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setRequestSubmitted(true)}
+                            onClick={submitPrescriptionRequest}
                             disabled={!canSubmitRequest}
                             className="px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                           >

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -142,10 +143,35 @@ export default function StopSmokingTreatmentPage() {
   };
 
   const submitQuestionnaire = () => {
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("stop-smoking-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    if (currentStep !== 3 || !understandImportantInfo || !understandInformGp) return;
+    beginPrescriptionCheckout({
+      slug: 'stop-smoking-treatment',
+      serviceName: 'Stop Smoking Treatment',
+      payload: {
+      patientSelection,
+      understandUnsuitable,
+      understandCourseOnly,
+      birthSex,
+      pregnantOrBreastfeeding,
+      understandPregnancyUnsuitable,
+      age,
+      smokingAmount,
+      usedVareniclineBefore,
+      lastUsedVarenicline,
+      stopSmokingSuccess,
+      unsuccessfulReason,
+      hadSideEffects,
+      listedSideEffects,
+      understandSideEffectsUnsuitable,
+      medicalConditions,
+      takingQuitTherapy,
+      understandQuitTherapyUnsuitable,
+      takingInteractionMeds,
+      understandInteractionUnsuitable,
+      understandImportantInfo,
+      understandInformGp,
+      },
+    });
   };
 
   let step2Counter = 1;

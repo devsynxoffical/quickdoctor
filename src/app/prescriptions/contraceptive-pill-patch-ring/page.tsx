@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -134,6 +135,35 @@ export default function ContraceptivePage() {
     setConfirmTerms(false);
     setSubmitted(false);
     document.getElementById("questionnaire")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'contraceptive-pill-patch-ring',
+      serviceName: 'Contraceptive Pill Patch Ring',
+      payload: {
+      step,
+      patientFor,
+      birthSex,
+      age,
+      pregnant,
+      understandIrelandOnly,
+      understandBp,
+      contraceptiveType,
+      pillOption,
+      currentlyUsing,
+      medicalHistory,
+      smokerStatus,
+      migraineAura,
+      bpWhen,
+      bpSys,
+      bpDia,
+      heightCm,
+      weightKg,
+      confirmTrue,
+      confirmTerms,
+      },
+    });
   };
 
   return (
@@ -543,7 +573,7 @@ export default function ContraceptivePage() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => setSubmitted(true)}
+                      onClick={submitPrescriptionRequest}
                       disabled={!canContinueStep7 || submitted}
                       className="px-6 py-2 rounded-xl bg-primary text-white font-bold disabled:opacity-40"
                     >

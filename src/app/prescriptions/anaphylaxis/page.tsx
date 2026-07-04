@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -135,13 +136,34 @@ export default function AnaphylaxisPage() {
     }, 50);
   };
 
-  const submitForm = () => {
-    if (!finalAccuracyConfirm || !finalDoctorReviewConfirm) return;
-    setSubmitted(true);
-    setCurrentStep(7);
-    setTimeout(() => {
-      document.getElementById("anaphylaxis-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    const submitForm = () => {
+    beginPrescriptionCheckout({
+      slug: 'anaphylaxis',
+      serviceName: 'Anaphylaxis',
+      payload: {
+      aged17OrOver,
+      diagnosedAnaphylaxis,
+      trainedAndCarry,
+      awareSymptoms,
+      confidentUsage,
+      requestEmerade,
+      hasCurrentPen,
+      penType,
+      changedDeviceRequest,
+      recentSevereReaction,
+      emergencyCareNeeded,
+      symptomsControlled,
+      birthSex,
+      pregnantOrBreastfeeding,
+      newMedicalCondition,
+      newMedication,
+      pharmacyName,
+      idConfirm,
+      carryConfirm,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
   };
 
   const resetForm = () => {

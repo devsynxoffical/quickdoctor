@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -166,12 +167,41 @@ export default function AsthmaTreatmentPage() {
     }, 50);
   };
 
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("asthma-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'asthma-treatment',
+      serviceName: 'Asthma Treatment',
+      payload: {
+      understandAssessment,
+      requestFor,
+      understandUnsuitable,
+      birthSex,
+      pregnancyStatus,
+      asthmaDiagnosed,
+      needsRelieverOnly,
+      symptomsControlled,
+      acuteSymptoms,
+      inhalerType,
+      currentInhalers,
+      lastReviewWindow,
+      inhalerSideEffects,
+      otherConditions,
+      otherConditionsDetails,
+      medicineAllergies,
+      medicineAllergyDetails,
+      smokerHistory,
+      smokesPerDay,
+      heightCm,
+      weightKg,
+      knowsBloodPressure,
+      bpLastTaken,
+      bpSys,
+      bpDia,
+      confirmTrue,
+      confirmOwnUse,
+      },
+    });
   };
 
   return (

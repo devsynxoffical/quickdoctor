@@ -6,6 +6,8 @@ import {
   doctorNewBookingEmail,
   prescriptionIssuedEmail,
   certificateIssuedEmail,
+  serviceOrderConfirmedEmail,
+  doctorServiceRequestEmail,
 } from './emailService';
 
 function frontendBase() {
@@ -59,14 +61,68 @@ export async function notifyBookingConfirmed(appointmentId: string) {
 
   if (!appointment?.patient?.user) return;
 
+  const isVideo = appointment.serviceType === 'VIDEO_CONSULTATION';
+  const isCertificate = appointment.serviceType === 'MEDICAL_CERTIFICATE';
+  const serviceLabel =
+    appointment.serviceName ||
+    (isCertificate ? 'Medical certificate' : 'Prescription review');
+
   const doctorName = `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`;
   const patientName = `${appointment.patient.firstName} ${appointment.patient.lastName}`;
   const when = formatAppDateTime(appointment.dateTime);
   const base = frontendBase();
   const dashboardUrl = `${base}/dashboard/appointments`;
+  const recordsUrl = `${base}/dashboard/records`;
   const consultationUrl = `${base}/doctor/consultations/room?id=${appointment.id}`;
   const reference = appointmentReference(appointment.id);
   const fee = formatFee(appointment.priceCents);
+
+  if (!isVideo) {
+    await createNotification({
+      userId: appointment.patient.user.id,
+      type: isCertificate ? 'CERTIFICATE_REQUEST_PAID' : 'PRESCRIPTION_REQUEST_PAID',
+      title: 'Payment received',
+      body: `Your ${serviceLabel} request is with our GP team for review.`,
+      link: '/dashboard/appointments',
+      email: {
+        to: appointment.patient.user.email,
+        subject: `${serviceLabel} request confirmed — QuickDoctor`,
+        html: serviceOrderConfirmedEmail({
+          patientFirstName: appointment.patient.firstName,
+          serviceLabel,
+          fee,
+          reference,
+          dashboardUrl,
+          recordsUrl,
+          isCertificate,
+        }),
+      },
+    });
+
+    const doctorUser = appointment.doctor.user;
+    if (doctorUser) {
+      await createNotification({
+        userId: doctorUser.id,
+        type: isCertificate ? 'NEW_CERTIFICATE_REQUEST' : 'NEW_PRESCRIPTION_REQUEST',
+        title: `New ${isCertificate ? 'certificate' : 'prescription'} request`,
+        body: `${patientName} paid for ${serviceLabel}. Review the questionnaire in the consultation room.`,
+        link: `/doctor/consultations/room?id=${appointment.id}`,
+        email: {
+          to: doctorUser.email,
+          subject: `New ${serviceLabel} request — QuickDoctor`,
+          html: doctorServiceRequestEmail({
+            doctorName: appointment.doctor.firstName,
+            patientName,
+            serviceLabel,
+            fee,
+            reference,
+            consultationUrl,
+          }),
+        },
+      });
+    }
+    return;
+  }
 
   const patientJoinUrl = appointment.zoomJoinUrlPatient;
   const doctorHostUrl = appointment.zoomJoinUrlHost;

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useEffect, useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -251,6 +252,21 @@ export default function HpvVaccinePage() {
         "You provide your medical history, vaccination history, and consent information so the doctor can assess safety and suitability.",
     },
   ];
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'hpv-vaccine',
+      serviceName: 'Hpv Vaccine',
+      payload: {
+      hasStartedRequest,
+      requestFor,
+      age,
+      locationQuery,
+      searched,
+      answers,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
@@ -520,7 +536,7 @@ export default function HpvVaccinePage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setSubmitted(true)}
+                      onClick={submitPrescriptionRequest}
                       disabled={submitted}
                       className="px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >

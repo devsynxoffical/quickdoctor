@@ -8,6 +8,9 @@ import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
 import { isMaintenanceBlocking } from '../services/siteSettingsService';
 import { applyCoupon, incrementCouponUsage } from '../services/couponService';
 import { findOccupiedSlotConflict, prepareCheckoutAppointment, normalizeSlotTime, SlotTakenError } from '../lib/appointmentSlots';
+import { pickServiceDoctorId, reserveAsyncReviewSlot } from '../lib/asyncServiceSlots';
+import { CERTIFICATE_PRICE_CENTS, PRESCRIPTION_REVIEW_PRICE_CENTS } from '../lib/servicePricing';
+import type { AppointmentServiceType } from '@prisma/client';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
@@ -40,42 +43,48 @@ async function confirmAppointmentPayment(
     return { confirmed: true };
   }
 
-  const conflict = await findOccupiedSlotConflict(
-    appointment.doctorId,
-    appointment.dateTime,
-    appointmentId
-  );
+  const skipSlotConflict =
+    appointment.serviceType === 'MEDICAL_CERTIFICATE' ||
+    appointment.serviceType === 'PRESCRIPTION_REVIEW';
 
-  if (conflict) {
-    await prisma.$transaction([
-      prisma.appointment.update({
-        where: { id: appointmentId },
-        data: { status: 'CANCELLED', holdExpiresAt: null },
-      }),
-      prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: 'FAILED' },
-      }),
-    ]);
+  if (!skipSlotConflict) {
+    const conflict = await findOccupiedSlotConflict(
+      appointment.doctorId,
+      appointment.dateTime,
+      appointmentId
+    );
 
-    const stripe = getStripe();
-    if (stripe && stripePaymentIntentId) {
-      try {
-        await stripe.refunds.create({ payment_intent: stripePaymentIntentId });
-        await prisma.payment.update({
+    if (conflict) {
+      await prisma.$transaction([
+        prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { status: 'CANCELLED', holdExpiresAt: null },
+        }),
+        prisma.payment.update({
           where: { id: paymentId },
-          data: { status: 'REFUNDED' },
-        });
-      } catch {
-        /* refund may need manual handling */
-      }
-    }
+          data: { status: 'FAILED' },
+        }),
+      ]);
 
-    return {
-      confirmed: false,
-      message:
-        'This time slot was just booked by someone else. If you were charged, a refund will be processed.',
-    };
+      const stripe = getStripe();
+      if (stripe && stripePaymentIntentId) {
+        try {
+          await stripe.refunds.create({ payment_intent: stripePaymentIntentId });
+          await prisma.payment.update({
+            where: { id: paymentId },
+            data: { status: 'REFUNDED' },
+          });
+        } catch {
+          /* refund may need manual handling */
+        }
+      }
+
+      return {
+        confirmed: false,
+        message:
+          'This time slot was just booked by someone else. If you were charged, a refund will be processed.',
+      };
+    }
   }
 
   await prisma.$transaction([
@@ -472,6 +481,196 @@ export const getCheckoutStatus = async (req: AuthRequest, res: Response): Promis
       status: payment.status,
       appointment: payment.appointment,
       slotUnavailable,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+const SERVICE_TYPES: AppointmentServiceType[] = [
+  'MEDICAL_CERTIFICATE',
+  'PRESCRIPTION_REVIEW',
+];
+
+export const createServiceCheckout = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const maintenance = await isMaintenanceBlocking(req.user?.role);
+    if (maintenance.blocked) {
+      res.status(503).json({ message: maintenance.message, maintenanceMode: true });
+      return;
+    }
+
+    const { serviceType, serviceSlug, serviceName, payload, couponCode } = req.body;
+    const userId = req.user?.id;
+
+    if (!serviceType || !SERVICE_TYPES.includes(serviceType)) {
+      res.status(400).json({ message: 'Valid serviceType is required' });
+      return;
+    }
+
+    if (!serviceName || typeof serviceName !== 'string') {
+      res.status(400).json({ message: 'serviceName is required' });
+      return;
+    }
+
+    if (payload !== undefined && (typeof payload !== 'object' || payload === null || Array.isArray(payload))) {
+      res.status(400).json({ message: 'payload must be an object' });
+      return;
+    }
+
+    const patient = await prisma.patient.findUnique({ where: { userId: userId! } });
+    if (!patient) {
+      res.status(404).json({ message: 'Patient profile not found' });
+      return;
+    }
+
+    const originalCents =
+      serviceType === 'MEDICAL_CERTIFICATE'
+        ? CERTIFICATE_PRICE_CENTS
+        : PRESCRIPTION_REVIEW_PRICE_CENTS;
+
+    let pricing;
+    try {
+      pricing = await applyCoupon(couponCode, originalCents);
+    } catch (couponError: unknown) {
+      res.status(400).json({
+        message: couponError instanceof Error ? couponError.message : 'Invalid coupon',
+      });
+      return;
+    }
+
+    const amountCents = pricing.finalCents;
+    const doctorId = await pickServiceDoctorId();
+    const dateTime = await reserveAsyncReviewSlot(doctorId);
+    const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
+
+    const notes =
+      serviceType === 'MEDICAL_CERTIFICATE'
+        ? `Medical certificate request${serviceSlug ? `: ${serviceSlug}` : ''}`
+        : `Prescription review: ${serviceName}`;
+
+    const prepared = await prepareCheckoutAppointment({
+      patientId: patient.id,
+      doctorId,
+      dateTime,
+      notes,
+      priceCents: amountCents,
+      holdExpiresAt,
+      serviceType,
+      serviceSlug: typeof serviceSlug === 'string' ? serviceSlug : undefined,
+      serviceName,
+      requestPayload: payload ?? {},
+    });
+
+    const appointment = prepared.appointment;
+    const checkoutReused = prepared.reused;
+
+    const paymentData = {
+      appointmentId: appointment.id,
+      amountCents,
+      originalAmountCents: originalCents,
+      discountCents: pricing.discountCents,
+      couponId: pricing.couponId || null,
+      currency: 'EUR',
+      status: 'PENDING' as const,
+    };
+
+    const stripe = getStripe();
+
+    const upsertPendingPayment = async (extra?: { stripeSessionId?: string }) => {
+      if (checkoutReused) {
+        return prisma.payment.upsert({
+          where: { appointmentId: appointment.id },
+          create: { ...paymentData, ...extra },
+          update: {
+            ...paymentData,
+            ...extra,
+            paidAt: null,
+            stripePaymentIntentId: null,
+          },
+        });
+      }
+      return prisma.payment.create({ data: { ...paymentData, ...extra } });
+    };
+
+    if (!stripe || amountCents < STRIPE_MIN_CENTS) {
+      const payment = await upsertPendingPayment();
+
+      if (amountCents < STRIPE_MIN_CENTS) {
+        const result = await confirmAppointmentPayment(
+          appointment.id,
+          payment.id,
+          pricing.couponId,
+          userId!
+        );
+        if (!result.confirmed) {
+          res.status(409).json({ message: result.message || 'Could not confirm request' });
+          return;
+        }
+        res.status(201).json({
+          message: amountCents === 0 ? 'Request confirmed with coupon' : 'Request confirmed',
+          appointmentId: appointment.id,
+          freeCheckout: true,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        message:
+          'Stripe is not configured. Complete in test mode or set STRIPE_SECRET_KEY in backend/.env.',
+        appointmentId: appointment.id,
+        testMode: true,
+        devConfirmUrl: `${frontendBase()}/dashboard/appointments?confirmDev=${appointment.id}`,
+      });
+      return;
+    }
+
+    const patientUser = await prisma.user.findUnique({ where: { id: userId! } });
+    const productLabel =
+      serviceType === 'MEDICAL_CERTIFICATE'
+        ? 'Medical certificate review'
+        : `Prescription review — ${serviceName}`;
+
+    const lineDescription = pricing.discountCents
+      ? `${serviceName} (coupon ${pricing.code}: -€${(pricing.discountCents / 100).toFixed(2)})`
+      : 'Reviewed by an Irish-registered GP within 1 business day';
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      customer_email: patientUser?.email,
+      line_items: [
+        {
+          price_data: {
+            currency: 'eur',
+            unit_amount: amountCents,
+            product_data: {
+              name: productLabel,
+              description: lineDescription,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        appointmentId: appointment.id,
+        patientId: patient.id,
+        doctorId,
+        couponId: pricing.couponId || '',
+        serviceType,
+      },
+      success_url: `${frontendBase()}/dashboard/appointments?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendBase()}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
+    });
+
+    await upsertPendingPayment({ stripeSessionId: session.id });
+
+    res.status(201).json({
+      checkoutUrl: session.url,
+      sessionId: session.id,
+      appointmentId: appointment.id,
+      discountCents: pricing.discountCents,
+      finalAmountCents: amountCents,
     });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -142,12 +143,39 @@ export default function ColdSoreTreatmentsPage() {
       document.getElementById("cold-sore-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   };
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("cold-sore-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'cold-sore-treatments',
+      serviceName: 'Cold Sore Treatments',
+      payload: {
+      requestFor,
+      birthSex,
+      pregnantOrBreastfeeding,
+      previousDiagnosis,
+      proceedAciclovir,
+      seekingExtendedCourse,
+      usualLesionLocation,
+      redFlagSymptoms,
+      kidneyDisease,
+      immunocompromised,
+      lesionsOnLipsMouthChin,
+      activeOutbreakNow,
+      outbreakFrequency,
+      lastOutbreakTiming,
+      currentMedications,
+      currentMedicationsDetails,
+      medicineAllergies,
+      medicineAllergiesDetails,
+      smokerHistory,
+      alcoholUse,
+      stressLevels,
+      preferredPharmacy,
+      contactNumber,
+      confirmTrueAnswers,
+      confirmPersonalUse,
+      },
+    });
   };
 
   return (

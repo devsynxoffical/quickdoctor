@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -252,12 +253,92 @@ export default function AcneTreatmentPage() {
     }, 50);
   };
 
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("acne-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'acne-treatment',
+      serviceName: 'Acne Treatment',
+      payload: {
+      hadAcneBefore,
+      lookingForExcludedMeds,
+      specificTreatment,
+      requestedTreatments,
+      requestedTreatmentsOther,
+      acneDuration,
+      bodyAreas,
+      otherAffectedAreas,
+      acneSymptoms,
+      acneSymptomsOther,
+      timesTreated,
+      pastTreatments,
+      pastTreatmentsOther,
+      successfulTreatment,
+      currentlyUsingTreatment,
+      closeUpPhoto,
+      overviewPhoto,
+      uploadMorePhotos,
+      extraPhoto1,
+      extraPhoto2,
+      otherSkinProblemsHistory,
+      skinProblems,
+      skinProblemsOtherDescription,
+      skinProblemsYesDetails,
+      kidneyUrinaryHistory,
+      kidneyUrinaryDetails,
+      digestiveHistory,
+      digestiveDetails,
+      nervousSystemHistory,
+      nervousSystemDetails,
+      jointConditionsHistory,
+      jointConditionsDetails,
+      familyHistoryAcne,
+      prescribedMedications,
+      nonPrescribedMedications,
+      recreationalDrugs,
+      recentAntibiotics,
+      otherMedicalInfo,
+      prescribedMedicationsDetails,
+      nonPrescribedMedicationsDetails,
+      nonPrescribedSelections,
+      nonPrescribedOther,
+      recreationalDrugsDetails,
+      recentAntibioticsDetails,
+      otherMedicalInfoDetails,
+      medicineAllergies,
+      medicineAllergyDetails,
+      generalAllergies,
+      generalAllergySelections,
+      generalAllergyOther,
+      aboutBirthSex,
+      heightUnit,
+      heightFeet,
+      heightInches,
+      heightCmAbout,
+      weightUnit,
+      weightStone,
+      weightPounds,
+      weightKgAbout,
+      knowsBloodPressure,
+      breastfeedingNow,
+      pregnantNow,
+      planningPregnancy,
+      usingContraception,
+      regularContraception,
+      regularContraceptionOther,
+      bpLastChecked,
+      bpSysReading,
+      bpDiaReading,
+      smokerHistory,
+      currentlySmokes,
+      smokesPerDay,
+      drinksAlcohol,
+      alcoholUnitsPerWeek,
+      exerciseFrequency,
+      cannotExerciseReason,
+      confirmInformationTrue,
+      confirmOwnUseOnly,
+      },
+    });
   };
 
   return (

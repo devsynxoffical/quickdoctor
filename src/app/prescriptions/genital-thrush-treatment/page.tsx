@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -187,6 +188,18 @@ export default function GenitalThrushTreatmentPage() {
     }, 0);
   };
 
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'genital-thrush-treatment',
+      serviceName: 'Genital Thrush Treatment',
+      payload: {
+      answers,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       <Navbar />
@@ -367,7 +380,7 @@ export default function GenitalThrushTreatmentPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setSubmitted(true)}
+                          onClick={submitPrescriptionRequest}
                           disabled={!isCurrentStepComplete || submitted}
                           className="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                         >

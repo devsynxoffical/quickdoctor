@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -92,6 +93,25 @@ export default function HayFeverPage() {
     pregnantOrBreastfeeding !== "" &&
     usingOtherMedication !== "";
   const canSubmit = finalAccuracyConfirm && finalDoctorReviewConfirm;
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'hay-fever',
+      serviceName: 'Hay Fever',
+      payload: {
+      step1Ack,
+      unsuitableAck,
+      patientFor,
+      diagnosedHayFever,
+      hasSevereSymptoms,
+      hasMedicationAllergy,
+      pregnantOrBreastfeeding,
+      usingOtherMedication,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
@@ -328,7 +348,7 @@ export default function HayFeverPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setSubmitted(true)}
+                        onClick={submitPrescriptionRequest}
                         disabled={submitted || !canSubmit}
                         className="px-6 py-2 rounded-xl bg-primary text-white font-bold disabled:opacity-40"
                       >

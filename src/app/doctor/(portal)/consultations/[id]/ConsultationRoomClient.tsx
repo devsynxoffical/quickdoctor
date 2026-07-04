@@ -289,6 +289,21 @@ function ConsultationRoomContent() {
                 </h4>
                 <p className="text-sm text-slate-600">{appointment.notes || 'No notes from patient.'}</p>
               </div>
+              {appointment.serviceType && appointment.serviceType !== 'VIDEO_CONSULTATION' && (
+                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 md:col-span-2">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-amber-700 mb-2">
+                    {appointment.serviceType === 'MEDICAL_CERTIFICATE'
+                      ? 'Certificate questionnaire'
+                      : 'Prescription questionnaire'}
+                    {appointment.serviceName ? ` — ${appointment.serviceName}` : ''}
+                  </h4>
+                  <pre className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap overflow-x-auto max-h-64">
+                    {appointment.requestPayload
+                      ? JSON.stringify(appointment.requestPayload, null, 2)
+                      : 'No questionnaire answers stored.'}
+                  </pre>
+                </div>
+              )}
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50">
                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
                   <Shield className="w-4 h-4" /> Issued documents
@@ -555,6 +570,9 @@ type AppointmentDetail = {
   patientId: string;
   notes?: string | null;
   clinicalNotes?: string | null;
+  serviceType?: 'VIDEO_CONSULTATION' | 'MEDICAL_CERTIFICATE' | 'PRESCRIPTION_REVIEW';
+  serviceName?: string | null;
+  requestPayload?: Record<string, unknown> | null;
   patient: { firstName: string; lastName: string; dob: string; gender?: string };
   doctor?: { firstName: string; lastName: string };
   prescription?: PrescriptionRow | null;

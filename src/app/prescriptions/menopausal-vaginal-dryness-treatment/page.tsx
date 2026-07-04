@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -166,6 +167,19 @@ export default function MenopausalVaginalDrynessTreatmentPage() {
     setTimeout(() => {
       document.getElementById("menopausal-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
+  };
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'menopausal-vaginal-dryness-treatment',
+      serviceName: 'Menopausal Vaginal Dryness Treatment',
+      payload: {
+      answers,
+      understandUnsuitable,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
   };
 
   return (
@@ -408,7 +422,7 @@ export default function MenopausalVaginalDrynessTreatmentPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setSubmitted(true)}
+                          onClick={submitPrescriptionRequest}
                           disabled={!isStepComplete || submitted}
                           className="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                         >

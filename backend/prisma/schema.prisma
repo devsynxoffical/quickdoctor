@@ -33,6 +33,12 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum AppointmentServiceType {
+  VIDEO_CONSULTATION
+  MEDICAL_CERTIFICATE
+  PRESCRIPTION_REVIEW
+}
+
 enum PaymentStatus {
   PENDING
   SUCCEEDED
@@ -185,6 +191,10 @@ model Appointment {
 
   dateTime      DateTime
   status        AppointmentStatus @default(PENDING_PAYMENT)
+  serviceType   AppointmentServiceType @default(VIDEO_CONSULTATION)
+  serviceSlug   String?
+  serviceName   String?
+  requestPayload Json?
   notes         String?
   priceCents    Int
   holdExpiresAt DateTime?

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -159,12 +160,46 @@ export default function EczemaTreatmentPage() {
       document.getElementById("eczema-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   };
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("eczema-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'eczema-treatment',
+      serviceName: 'Eczema Treatment',
+      payload: {
+      birthSex,
+      pregnancyStatus,
+      diagnosedEczema,
+      seekingProtopic,
+      immunosuppressantMeds,
+      lookingForTretinoin,
+      seriousComplications,
+      forAnotherAdultOrChild,
+      possibleInfectionSymptoms,
+      currentTreatments,
+      otherAffectedAreas,
+      eczemaDuration,
+      eczemaLocations,
+      eczemaSymptoms,
+      symptomSeverity,
+      photosUploaded,
+      medicalConditions,
+      medicineAllergies,
+      medicineAllergiesDetails,
+      regularMeds,
+      regularMedsDetails,
+      smokerHistory,
+      alcoholUse,
+      exerciseFrequency,
+      heightCm,
+      weightKg,
+      knowsBloodPressure,
+      bloodPressure,
+      preferredPharmacy,
+      contactNumber,
+      confirmAnswers,
+      confirmOwnUse,
+      },
+    });
   };
 
   return (

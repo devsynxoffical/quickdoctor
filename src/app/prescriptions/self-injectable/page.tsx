@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -125,13 +126,29 @@ export default function SelfInjectablePrescriptionPage() {
     }, 50);
   };
 
-  const submitForm = () => {
-    if (!canGoNext) return;
-    setSubmitted(true);
-    setCurrentStep(4);
-    setTimeout(() => {
-      document.getElementById("self-injectable-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    const submitForm = () => {
+    beginPrescriptionCheckout({
+      slug: 'self-injectable',
+      serviceName: 'Self Injectable',
+      payload: {
+      requestFor,
+      ageBand,
+      birthSex,
+      heightCm,
+      weightKg,
+      pregnancyStatus,
+      medicalConditions,
+      medications,
+      pancreatitisHistory,
+      thyroidHistory,
+      allergyHistory,
+      dietExerciseReady,
+      injectionConfidence,
+      followUpCommitment,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
   };
 
   const resetForm = () => {

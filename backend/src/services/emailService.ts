@@ -235,3 +235,54 @@ export function doctorRejectedEmail(params: {
      <p>If you have questions, contact support or <a href="${params.applyUrl}">submit updated information</a>.</p>`
   );
 }
+
+export function serviceOrderConfirmedEmail(params: {
+  patientFirstName: string;
+  serviceLabel: string;
+  fee: string;
+  reference: string;
+  dashboardUrl: string;
+  recordsUrl: string;
+  isCertificate: boolean;
+}) {
+  const outcome = params.isCertificate
+    ? 'Your certificate will be emailed after GP approval (usually within 1 business day).'
+    : 'If suitable, your prescription will appear in your medical records after GP review.';
+
+  return emailLayout(
+    'Payment confirmed',
+    `<p>Hi ${params.patientFirstName},</p>
+     <p>Thank you for your payment. Your <strong>${params.serviceLabel}</strong> request is now with our GP team.</p>
+     ${appointmentDetailsBlock({
+       reference: params.reference,
+       dateTime: 'Review in progress',
+       fee: params.fee,
+     })}
+     <p>${outcome}</p>
+     <p><a href="${params.dashboardUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View my requests</a></p>
+     <p style="font-size:13px;color:#64748b">Issued documents will also appear on your <a href="${params.recordsUrl}">medical records</a> page.</p>`
+  );
+}
+
+export function doctorServiceRequestEmail(params: {
+  doctorName: string;
+  patientName: string;
+  serviceLabel: string;
+  fee: string;
+  reference: string;
+  consultationUrl: string;
+}) {
+  return emailLayout(
+    'New paid service request',
+    `<p>Hi ${params.doctorName},</p>
+     <p><strong>${params.patientName}</strong> has paid for a <strong>${params.serviceLabel}</strong> review.</p>
+     ${appointmentDetailsBlock({
+       reference: params.reference,
+       dateTime: 'Awaiting review',
+       patientName: params.patientName,
+       fee: params.fee,
+     })}
+     <p><a href="${params.consultationUrl}" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Review questionnaire</a></p>
+     <p style="font-size:13px;color:#64748b">Open the consultation room to read answers and issue a prescription or certificate.</p>`
+  );
+}

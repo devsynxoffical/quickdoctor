@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -147,9 +148,30 @@ export default function ErectileDysfunctionTreatmentPage() {
     }, 50);
   };
 
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
+    beginPrescriptionCheckout({
+      slug: 'erectile-dysfunction-treatment',
+      serviceName: 'Erectile Dysfunction Treatment',
+      payload: {
+      understandAssessmentInfo,
+      patientSelection,
+      understandUnsuitable,
+      birthSex,
+      age,
+      chestPainHistory,
+      nitratesUse,
+      cardiacCondition,
+      smokingStatus,
+      alcoholUnits,
+      exerciseLevel,
+      currentEdMedication,
+      otherMedications,
+      medicationAllergies,
+      confirmAccurate,
+      confirmGpAware,
+      },
+    });
   };
 
   return (

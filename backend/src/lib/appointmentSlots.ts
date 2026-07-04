@@ -1,5 +1,5 @@
 import prisma from '../config/db';
-import type { Appointment, AppointmentStatus } from '@prisma/client';
+import type { Appointment, AppointmentServiceType, AppointmentStatus, Prisma } from '@prisma/client';
 
 /** Statuses that actually occupy a doctor's calendar slot. */
 export const SLOT_OCCUPIED_STATUSES: AppointmentStatus[] = ['CONFIRMED', 'PENDING', 'COMPLETED'];
@@ -40,6 +40,10 @@ export async function prepareCheckoutAppointment(input: {
   notes?: string;
   priceCents: number;
   holdExpiresAt: Date;
+  serviceType?: AppointmentServiceType;
+  serviceSlug?: string;
+  serviceName?: string;
+  requestPayload?: Prisma.InputJsonValue;
 }): Promise<{ appointment: Appointment; reused: boolean }> {
   const existing = await prisma.appointment.findUnique({
     where: {
@@ -64,6 +68,10 @@ export async function prepareCheckoutAppointment(input: {
         notes: input.notes,
         priceCents: input.priceCents,
         holdExpiresAt: input.holdExpiresAt,
+        serviceType: input.serviceType,
+        serviceSlug: input.serviceSlug,
+        serviceName: input.serviceName,
+        requestPayload: input.requestPayload,
       },
     });
     return { appointment, reused: true };
@@ -78,6 +86,10 @@ export async function prepareCheckoutAppointment(input: {
       notes: input.notes,
       priceCents: input.priceCents,
       holdExpiresAt: input.holdExpiresAt,
+      serviceType: input.serviceType ?? 'VIDEO_CONSULTATION',
+      serviceSlug: input.serviceSlug,
+      serviceName: input.serviceName,
+      requestPayload: input.requestPayload,
     },
   });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -32,6 +33,42 @@ const AccordionItem = ({ question, answer }: { question: string; answer: string 
 };
 
 export default function TravelVaccinesAntiMalariaPage() {
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'travel-vaccines-anti-malaria',
+      serviceName: 'Travel Vaccines Anti Malaria',
+      payload: {
+      requestFor,
+      departureWindow,
+      age,
+      birthSex,
+      pregnant,
+      breastfeeding,
+      bleedingDisorder,
+      immunocompromised,
+      warfarin,
+      anaphylaxis,
+      yellowFever,
+      malariaPastYear,
+      acknowledge,
+      destinationRegion,
+      tripDuration,
+      departureMonth,
+      ruralTravel,
+      outdoorActivity,
+      nightExposure,
+      vaccineRecord,
+      ongoingIllness,
+      regularMedication,
+      allergies,
+      preferredPharmacy,
+      contactNumber,
+      consentDoctorReview,
+      confirmAccuracy,
+      },
+    });
+  };
+
   const commonVaccines = [
     "Cholera (oral)",
     "Diphtheria",
@@ -862,7 +899,7 @@ export default function TravelVaccinesAntiMalariaPage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setSubmitted(true)}
+                      onClick={submitPrescriptionRequest}
                       disabled={submitted || !consentDoctorReview || !confirmAccuracy}
                       className="px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >

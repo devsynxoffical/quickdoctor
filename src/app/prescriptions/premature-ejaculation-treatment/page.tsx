@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -177,9 +178,59 @@ export default function PrematureEjaculationTreatmentPage() {
     }, 50);
   };
 
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
+    beginPrescriptionCheckout({
+      slug: 'premature-ejaculation-treatment',
+      serviceName: 'Premature Ejaculation Treatment',
+      payload: {
+      sexuallyActiveDuration,
+      peProblemDuration,
+      peFrequency,
+      ejaculationTiming,
+      inRelationship,
+      relationshipAffected,
+      masturbationPe,
+      knowCause,
+      triedTherapy,
+      erectionProblems,
+      edTreatmentHistory,
+      preferredMedication,
+      lastBloodPressureCheck,
+      bloodPressureCheckedBy,
+      bloodPressureReading,
+      recentMedicineUse,
+      recentMedicineDetails,
+      advisedAvoidSex,
+      adviceReason,
+      genitalPain,
+      pastTreatmentsHistory,
+      pastTreatmentsDetails,
+      lowBloodPressureHistory,
+      lowBloodPressureDetails,
+      heartConditionHistory,
+      heartConditionDetails,
+      bleedingDisorderHistory,
+      bleedingDisorderDetails,
+      migraineHistory,
+      migraineDetails,
+      epilepsyHistory,
+      epilepsyDetails,
+      physicalBirthSex,
+      heightUnit,
+      heightFt,
+      heightIn,
+      heightCm,
+      weightUnit,
+      weightSt,
+      weightLb,
+      weightKg,
+      snore,
+      neckSize,
+      confirmTrueAnswers,
+      agreeTerms,
+      },
+    });
   };
 
   return (

@@ -1,10 +1,16 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { jsPDF } from "jspdf";
 import { AlertCircle, ArrowRight, CheckCircle2, Clock3, FileCheck2, ShieldCheck, Stethoscope, WalletCards } from "lucide-react";
+import {
+  CERTIFICATE_PRICE_CENTS,
+  beginCertificateCheckout,
+  formatServicePrice,
+  requirePatientLogin,
+} from "@/lib/serviceCheckout";
 
 type FormState = {
   firstName: string;
@@ -52,7 +58,8 @@ const symptomOptions = [
 export default function MedicalCertificatesPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [step, setStep] = useState<1 | 2>(1);
-  const [paid, setPaid] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const errors = useMemo(() => {
@@ -95,100 +102,25 @@ export default function MedicalCertificatesPage() {
     setStep(2);
   };
 
-  const downloadPdf = () => {
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const issuedDate = new Date().toLocaleDateString("en-IE");
-    const patientName = `${form.firstName} ${form.lastName}`.trim();
-    const fitNote = `This is to certify that ${patientName} has been assessed via online GP service and is medically unfit for ${form.absenceFrom.toLowerCase()} from ${form.fromDate} to ${form.toDate}.`;
+  const handlePay = () => {
+    setPayError(null);
+    if (!requirePatientLogin("/medical-certificates")) return;
 
-    // Header strip
-    doc.setFillColor(0, 98, 255); // primary blue
-    doc.rect(0, 0, 210, 28, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("MEDICAL CERTIFICATE", 14, 17);
-    doc.setFontSize(10);
-    doc.text("QuickDoctor - Online Doctor Services", 14, 23);
-
-    // Certificate frame
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(12, 34, 186, 230, 3, 3, "S");
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Certificate Details", 20, 46);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Certificate ID: QD-${Date.now().toString().slice(-8)}`, 20, 54);
-    doc.text(`Issued Date: ${issuedDate}`, 20, 60);
-    doc.text(`Patient Name: ${patientName}`, 20, 66);
-    doc.text(`Email: ${form.email}`, 20, 72);
-    doc.text(`Phone: ${form.phone}`, 20, 78);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Sick Leave Period", 20, 90);
-    doc.setFont("helvetica", "normal");
-    doc.text(`From: ${form.fromDate}`, 20, 97);
-    doc.text(`To: ${form.toDate}`, 20, 103);
-    doc.text(`Absence Type: ${form.absenceFrom}`, 20, 109);
-    doc.text(`Reason Category: ${form.reason}${form.reason === "Other" && form.otherReason ? ` - ${form.otherReason}` : ""}`, 20, 115);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Clinical Statement", 20, 128);
-    doc.setFont("helvetica", "normal");
-    const wrappedStatement = doc.splitTextToSize(fitNote, 165);
-    doc.text(wrappedStatement, 20, 135);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Patient Timeline Summary", 20, 157);
-    doc.setFont("helvetica", "normal");
-    const wrappedTimeline = doc.splitTextToSize(form.timeline || "N/A", 165);
-    doc.text(wrappedTimeline, 20, 164);
-
-    // Signature block
-    doc.setDrawColor(148, 163, 184);
-    doc.line(20, 232, 95, 232);
-    doc.setFontSize(9);
-    doc.text("Irish-Registered GP Signature", 20, 237);
-    doc.line(120, 232, 190, 232);
-    doc.text("Clinic Stamp", 120, 237);
-
-    // QR placeholder box
-    doc.setDrawColor(30, 41, 59);
-    doc.rect(158, 44, 30, 30);
-    doc.setFontSize(7);
-    doc.text("QR Verify", 165, 78);
-
-    doc.setTextColor(71, 85, 105);
-    doc.setFontSize(8);
-    doc.text("Tamperproof digital certificate. Verify with QR.", 20, 255);
-
-    const safeName = (patientName || "patient")
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .trim()
-      .replace(/\s+/g, "-");
-
+    setPaying(true);
     try {
-      // Primary path: use Blob download for broad browser compatibility.
-      const pdfBlob = doc.output("blob");
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `medical-certificate-${safeName || "patient"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback path if blob output is unavailable.
-      doc.save(`medical-certificate-${safeName || "patient"}.pdf`);
+      beginCertificateCheckout({
+        payload: {
+          ...form,
+          reason: form.reason === "Other" ? form.otherReason || form.reason : form.reason,
+        },
+      });
+    } catch (err: unknown) {
+      setPayError(err instanceof Error ? err.message : "Could not start checkout");
+      setPaying(false);
     }
   };
+
+  const priceLabel = formatServicePrice(CERTIFICATE_PRICE_CENTS);
 
   const inputBaseClass =
     "mt-2 w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition";
@@ -215,7 +147,7 @@ export default function MedicalCertificatesPage() {
               <div className="mt-7 grid sm:grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <p className="text-xs uppercase tracking-wide font-bold text-slate-500">Price</p>
-                  <p className="text-xl font-black text-primary mt-1">EUR30</p>
+                  <p className="text-xl font-black text-primary mt-1">{priceLabel}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <p className="text-xs uppercase tracking-wide font-bold text-slate-500">Review time</p>
@@ -229,7 +161,7 @@ export default function MedicalCertificatesPage() {
 
               <h2 className="text-2xl font-black mt-8">How it works</h2>
               <ul className="mt-4 space-y-3 text-slate-700 dark:text-slate-300">
-                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />Cost EUR30 with Irish doctor review.</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />Cost {priceLabel} with Irish doctor review.</li>
                 <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />Usually delivered by e-mail within 1 business day after approval.</li>
                 <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />Sick leave requests can cover up to 7 days at a time.</li>
               </ul>
@@ -406,40 +338,48 @@ export default function MedicalCertificatesPage() {
 
               {step === 2 && (
                 <div className="mt-8">
-                  {!paid ? (
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-slate-50/70 dark:bg-slate-900/60">
-                      <h4 className="text-xl font-black">Payment</h4>
-                      <p className="text-sm text-slate-500 mt-2">Secure payment for your medical certificate request.</p>
-                      <div className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full bg-primary/10 text-primary">
-                        <WalletCards className="w-4 h-4" />
-                        Secure Checkout
-                      </div>
-                      <div className="mt-5 space-y-2 text-sm">
-                        <div className="flex items-center justify-between"><span>Medical Certificate</span><span className="font-bold">EUR30.00</span></div>
-                        <div className="flex items-center justify-between"><span>Service fee</span><span className="font-bold">EUR0.00</span></div>
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-200"><span className="font-bold">Total</span><span className="font-black">EUR30.00</span></div>
-                      </div>
-                      <button onClick={() => setPaid(true)} className="w-full mt-5 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors">Pay EUR30</button>
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-slate-50/70 dark:bg-slate-900/60">
+                    <h4 className="text-xl font-black">Payment</h4>
+                    <p className="text-sm text-slate-500 mt-2">
+                      Pay securely with Stripe. A GP reviews your form — certificate delivered by email after approval.
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full bg-primary/10 text-primary">
+                      <WalletCards className="w-4 h-4" />
+                      Stripe Secure Checkout
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="w-6 h-6 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="text-xl font-black text-blue-900">Payment confirmed</h4>
-                          <p className="text-sm text-blue-800 mt-1">Your certificate request has been submitted successfully.</p>
-                        </div>
-                      </div>
-                      <div className="grid sm:grid-cols-3 gap-3 mt-5">
-                        <div className="p-3 rounded-xl bg-white border border-blue-200"><FileCheck2 className="w-4 h-4 text-blue-600" /><p className="text-xs mt-1">Certificate will be issued after review.</p></div>
-                        <div className="p-3 rounded-xl bg-white border border-blue-200"><ShieldCheck className="w-4 h-4 text-blue-600" /><p className="text-xs mt-1">Secure and tamperproof document.</p></div>
-                        <div className="p-3 rounded-xl bg-white border border-blue-200"><CheckCircle2 className="w-4 h-4 text-blue-600" /><p className="text-xs mt-1">Delivery by e-mail after approval.</p></div>
-                      </div>
-                      <button onClick={downloadPdf} className="mt-5 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold">
-                        Download PDF
-                      </button>
+                    <div className="mt-5 space-y-2 text-sm">
+                      <div className="flex items-center justify-between"><span>Medical Certificate</span><span className="font-bold">{priceLabel}</span></div>
+                      <div className="flex items-center justify-between"><span>Service fee</span><span className="font-bold">{formatServicePrice(0)}</span></div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200"><span className="font-bold">Total</span><span className="font-black">{priceLabel}</span></div>
                     </div>
-                  )}
+                    {payError && (
+                      <p className="mt-4 text-sm font-bold text-red-600">{payError}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handlePay}
+                      disabled={paying}
+                      className="w-full mt-5 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {paying ? "Redirecting…" : `Pay ${priceLabel}`}
+                    </button>
+                    <p className="text-xs text-slate-400 mt-3">
+                      Need an account?{" "}
+                      <Link href="/register?redirect=/medical-certificates" className="text-primary font-bold">
+                        Register free
+                      </Link>{" "}
+                      or{" "}
+                      <Link href="/login?redirect=/medical-certificates" className="text-primary font-bold">
+                        sign in
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-3 mt-5">
+                    <div className="p-3 rounded-xl bg-white border border-slate-200"><FileCheck2 className="w-4 h-4 text-primary" /><p className="text-xs mt-1">GP issues certificate after review.</p></div>
+                    <div className="p-3 rounded-xl bg-white border border-slate-200"><ShieldCheck className="w-4 h-4 text-primary" /><p className="text-xs mt-1">Secure Stripe payment.</p></div>
+                    <div className="p-3 rounded-xl bg-white border border-slate-200"><CheckCircle2 className="w-4 h-4 text-primary" /><p className="text-xs mt-1">Download from medical records when ready.</p></div>
+                  </div>
                 </div>
               )}
             </div>

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -163,12 +164,45 @@ export default function PlaquePsoriasisTreatmentPage() {
       document.getElementById("psoriasis-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   };
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("psoriasis-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'plaque-psoriasis-treatment',
+      serviceName: 'Plaque Psoriasis Treatment',
+      payload: {
+      age,
+      diagnosedPsoriasis,
+      psoriasisType,
+      overFivePercentBody,
+      specialAreasOrNails,
+      redFlagSymptoms,
+      kidneyLiverDisease,
+      calciumProblems,
+      specialisedTreatments,
+      birthSex,
+      pregnancyStatus,
+      photoQualityConfirm,
+      psoriasisDuration,
+      psoriasisLocations,
+      psoriasisSymptoms,
+      symptomSeverity,
+      photosUploaded,
+      medicalConditions,
+      medicineAllergies,
+      medicineAllergiesDetails,
+      regularMeds,
+      regularMedsDetails,
+      smokerHistory,
+      alcoholUse,
+      exerciseFrequency,
+      heightCm,
+      weightKg,
+      knowsBloodPressure,
+      bloodPressure,
+      confirmAnswers,
+      confirmOwnUse,
+      },
+    });
   };
 
   return (

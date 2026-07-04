@@ -115,6 +115,10 @@ export type AppointmentRow = {
   id: string;
   dateTime: string;
   status: string;
+  serviceType?: 'VIDEO_CONSULTATION' | 'MEDICAL_CERTIFICATE' | 'PRESCRIPTION_REVIEW';
+  serviceSlug?: string | null;
+  serviceName?: string | null;
+  requestPayload?: Record<string, unknown> | null;
   priceCents: number;
   notes?: string;
   clinicalNotes?: string;
@@ -298,6 +302,26 @@ export const paymentApi = {
     fetchApi<{ status: string; appointment: AppointmentRow; slotUnavailable?: string }>(
       `/payments/status?session_id=${sessionId}`
     ),
+  serviceCheckout: (data: {
+    serviceType: 'MEDICAL_CERTIFICATE' | 'PRESCRIPTION_REVIEW';
+    serviceSlug?: string;
+    serviceName: string;
+    payload?: Record<string, unknown>;
+    couponCode?: string;
+  }) =>
+    fetchApi<{
+      checkoutUrl?: string;
+      appointmentId: string;
+      testMode?: boolean;
+      freeCheckout?: boolean;
+      devConfirmUrl?: string;
+      message?: string;
+      discountCents?: number;
+      finalAmountCents?: number;
+    }>('/payments/service-checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export const medicalApi = {

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -207,6 +208,18 @@ export default function GenitalHerpesPage() {
     setTimeout(() => {
       document.getElementById("suitability-check")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
+  };
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'genital-herpes',
+      serviceName: 'Genital Herpes',
+      payload: {
+      answers,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
   };
 
   return (
@@ -443,7 +456,7 @@ export default function GenitalHerpesPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setSubmitted(true)}
+                          onClick={submitPrescriptionRequest}
                           disabled={!step7Complete || submitted}
                           className="px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                         >

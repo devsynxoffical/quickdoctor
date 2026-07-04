@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -165,12 +166,46 @@ export default function RosaceaTreatmentPage() {
       document.getElementById("rosacea-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   };
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("rosacea-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'rosacea-treatment',
+      serviceName: 'Rosacea Treatment',
+      payload: {
+      birthSex,
+      pregnancyOrBreastfeeding,
+      diagnosedRosacea,
+      confirmMedicationScope,
+      seekingRoaccutane,
+      rhinophyma,
+      recentEyeSymptoms,
+      suddenEyePainHistory,
+      rosaceaDuration,
+      affectedAreas,
+      knownTriggers,
+      symptomsNow,
+      symptomSeverity,
+      specificTreatmentRequest,
+      pastTreatments,
+      treatmentResponse,
+      closeUpPhoto,
+      overviewPhoto,
+      medicalConditions,
+      medicineAllergies,
+      medicineAllergiesDetails,
+      regularMedication,
+      regularMedicationDetails,
+      smokerHistory,
+      alcoholUse,
+      exerciseFrequency,
+      heightCm,
+      weightKg,
+      knowsBloodPressure,
+      bloodPressureReading,
+      confirmAnswersTrue,
+      confirmPersonalUse,
+      },
+    });
   };
 
   return (

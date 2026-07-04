@@ -47,9 +47,24 @@ export default function PrescriptionsPage() {
             </div>
             <h1 className="mt-4 text-4xl md:text-5xl font-black text-primary">Choose Your Prescription Service</h1>
             <p className="mt-4 text-slate-600 max-w-3xl">
-              Select a treatment below to start your request. If your condition is not listed, choose an online consultation
-              so a doctor can assess the best next step for you.
+              Select a treatment below to start your request. Complete the health questionnaire, pay securely with Stripe,
+              and an Irish GP reviews your answers — usually within 1 business day.
             </p>
+
+            <div className="mt-8 grid md:grid-cols-3 gap-4 max-w-4xl">
+              {[
+                { step: '1', title: 'Questionnaire', text: 'Answer clinical questions honestly for your chosen treatment.' },
+                { step: '2', title: 'Pay €25', text: 'Secure Stripe checkout. Full refund if our doctors cannot help.' },
+                { step: '3', title: 'GP review', text: 'Prescription appears in Medical Records if medically suitable.' },
+              ].map((item) => (
+                <div key={item.step} className="rounded-2xl bg-white border border-slate-200 p-5">
+                  <p className="text-xs font-black text-primary">Step {item.step}</p>
+                  <p className="font-black mt-1">{item.title}</p>
+                  <p className="text-sm text-slate-600 mt-2">{item.text}</p>
+                </div>
+              ))}
+            </div>
+
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/consultation"

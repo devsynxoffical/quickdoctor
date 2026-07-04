@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -43,6 +44,22 @@ export default function CalculateBmiPage() {
     if (!totalPounds || !totalInches || totalPounds <= 0 || totalInches <= 0) return null;
     return (703 * totalPounds) / (totalInches * totalInches);
   }, [unitMode, weightKg, heightCm, weightStone, weightPounds, heightFeet, heightInches]);
+
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'calculate-bmi',
+      serviceName: 'Calculate Bmi',
+      payload: {
+      unitMode,
+      weightKg,
+      heightCm,
+      weightStone,
+      weightPounds,
+      heightFeet,
+      heightInches,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
@@ -107,7 +124,7 @@ export default function CalculateBmiPage() {
                       className="mt-2 w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
                     />
                   </div>
-                  <button className="w-full mt-2 px-6 py-3 bg-primary text-white rounded-xl font-bold" onClick={() => setSubmitted(true)}>
+                  <button className="w-full mt-2 px-6 py-3 bg-primary text-white rounded-xl font-bold" onClick={submitPrescriptionRequest}>
                     Calculate your BMI
                   </button>
                 </div>
@@ -160,7 +177,7 @@ export default function CalculateBmiPage() {
                       />
                     </div>
                   </div>
-                  <button className="w-full mt-2 px-6 py-3 bg-primary text-white rounded-xl font-bold" onClick={() => setSubmitted(true)}>
+                  <button className="w-full mt-2 px-6 py-3 bg-primary text-white rounded-xl font-bold" onClick={submitPrescriptionRequest}>
                     Calculate your BMI
                   </button>
                 </div>

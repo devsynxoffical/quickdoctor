@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -175,12 +176,39 @@ export default function HypothyroidismTreatmentPage() {
     }, 50);
   };
 
-  const submitQuestionnaire = () => {
+    const submitQuestionnaire = () => {
     if (!canSubmit) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      document.getElementById("hypothyroidism-questionnaire")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    beginPrescriptionCheckout({
+      slug: 'hypothyroidism-treatment',
+      serviceName: 'Hypothyroidism Treatment',
+      payload: {
+      takingHypothyroidismMedication,
+      toldToStopMedication,
+      declinedMedicationBefore,
+      hadOveractiveThyroid,
+      allergicReactionToThyroidMedication,
+      birthGender,
+      pregnantOrBreastfeeding,
+      hasLatestBloodResults,
+      bloodResultsFileName,
+      lastBloodTestWhen,
+      knowsTshLevel,
+      tshLevelValue,
+      doseStable,
+      currentMedicationName,
+      currentDose,
+      missedDoses,
+      currentSymptoms,
+      otherSymptoms,
+      heartConditions,
+      weightChanges,
+      interactingSupplements,
+      pharmacyName,
+      pharmacyCounty,
+      confirmInformationTrue,
+      confirmOwnUseOnly,
+      },
+    });
   };
 
   return (

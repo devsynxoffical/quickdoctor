@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { beginPrescriptionCheckout } from '@/lib/serviceCheckout';
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -32,6 +33,35 @@ const AccordionItem = ({ question, answer }: { question: string; answer: string 
 };
 
 export default function JetLagPrescriptionPage() {
+  const submitPrescriptionRequest = () => {
+    beginPrescriptionCheckout({
+      slug: 'jet-lag-prescription',
+      serviceName: 'Jet Lag Prescription',
+      payload: {
+      requestFor,
+      unsuitableAck,
+      melatoninOnlyAck,
+      forJetLag,
+      age,
+      birthSex,
+      femaleRiskFactors,
+      hormonalMeds,
+      conditions,
+      medicationsA,
+      medicationsB,
+      diabetic,
+      timeDifference,
+      jetLagUnsuitableAck,
+      conditionsUnsuitableAck,
+      medicationsAUnsuitableAck,
+      medicationsBUnsuitableAck,
+      timeDiffUnsuitableAck,
+      finalAccuracyConfirm,
+      finalDoctorReviewConfirm,
+      },
+    });
+  };
+
   const infoItems = [
     {
       question: "What is jet lag?",
@@ -682,7 +712,7 @@ export default function JetLagPrescriptionPage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setSubmitted(true)}
+                      onClick={submitPrescriptionRequest}
                       disabled={submitted || !canSubmit}
                       className="px-8 py-3 rounded-lg bg-primary text-white font-bold disabled:opacity-50"
                     >

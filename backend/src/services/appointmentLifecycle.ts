@@ -4,7 +4,13 @@ import { notifyBookingConfirmed } from './notificationService';
 import { logAudit } from './auditService';
 
 export async function finalizeConfirmedAppointment(appointmentId: string, actorId?: string) {
-  await ensureZoomMeetingForAppointment(appointmentId);
+  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+  if (!appointment) return;
+
+  if (appointment.serviceType === 'VIDEO_CONSULTATION') {
+    await ensureZoomMeetingForAppointment(appointmentId);
+  }
+
   await notifyBookingConfirmed(appointmentId);
   await logAudit({
     actorId,
