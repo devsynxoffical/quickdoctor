@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from '@/components/NotificationBell';
+import { doctorProfileApi } from '@/lib/api';
 
 const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: string, icon: any, label: string, active: boolean, onClick?: () => void }) => (
   <Link href={href} onClick={onClick}>
@@ -30,6 +31,7 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [user, setUser] = React.useState<any>(null);
+  const [licenseNumber, setLicenseNumber] = React.useState('');
 
   React.useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -40,6 +42,15 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
         /* ignore */
       }
     }
+    doctorProfileApi
+      .get()
+      .then((d) => {
+        const doc = d as { licenseNumber?: string; firstName?: string; lastName?: string };
+        if (doc.licenseNumber) setLicenseNumber(doc.licenseNumber);
+      })
+      .catch(() => {
+        /* optional */
+      });
   }, []);
 
   const handleSignOut = () => {
@@ -85,7 +96,7 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Doctor Panel</p>
           <SidebarLink href="/doctor" icon={LayoutDashboard} label="Overview" active={pathname === '/doctor'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/doctor/consultations" icon={Users} label="Consultations" active={pathname.startsWith('/doctor/consultations')} onClick={() => setIsSidebarOpen(false)} />
-          <SidebarLink href="/doctor/schedule" icon={Calendar} label="Availability" active={pathname === '/doctor/schedule'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/doctor/settings" icon={Calendar} label="Availability" active={pathname === '/doctor/schedule' || pathname === '/doctor/settings'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/doctor/prescriptions" icon={Pill} label="Prescriptions" active={pathname === '/doctor/prescriptions'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/doctor/certificates" icon={FileText} label="Certificates" active={pathname === '/doctor/certificates'} onClick={() => setIsSidebarOpen(false)} />
           
@@ -108,8 +119,12 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Active Status</span>
              </div>
-             <p className="text-sm font-bold mb-1">{user ? `Dr. ${user.firstName || 'Doctor'}` : 'Loading...'}</p>
-             <p className="text-[10px] text-slate-400">GMC: #12345678</p>
+             <p className="text-sm font-bold mb-1">
+               {user ? `Dr. ${user.firstName || 'Doctor'} ${user.lastName || ''}`.trim() : 'Loading...'}
+             </p>
+             <p className="text-[10px] text-slate-400">
+               {licenseNumber ? `License: ${licenseNumber}` : 'Complete your profile in settings'}
+             </p>
           </div>
         </div>
       </aside>

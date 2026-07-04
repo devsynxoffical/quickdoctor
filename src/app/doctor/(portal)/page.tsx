@@ -11,6 +11,7 @@ import {
 
 import { useEffect, useState } from 'react';
 import { appointmentApi, doctorProfileApi, reviewApi } from '@/lib/api';
+import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 
 const DoctorOverview = () => {
   const [stats, setStats] = useState({ today: 0, pending: 0, earnings: 0 });
@@ -97,7 +98,7 @@ const DoctorOverview = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
            {[
              { label: 'Today Consultations', value: stats.today.toString(), icon: Video, color: 'text-blue-600', bg: 'bg-blue-100' },
-             { label: 'Pending Reviews', value: stats.pending.toString(), icon: ClipboardList, color: 'text-orange-600', bg: 'bg-orange-100' },
+             { label: 'Active appointments', value: stats.pending.toString(), icon: ClipboardList, color: 'text-orange-600', bg: 'bg-orange-100' },
              { label: 'Total Earnings', value: `€${stats.earnings}`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100' },
              {
                label: rating.count > 0 ? `Patient Rating (${rating.count})` : 'Patient Rating',
@@ -161,7 +162,7 @@ const DoctorOverview = () => {
                                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{item.notes || 'Routine checkup'}</p>
                             </div>
                             <Link 
-                              href={`/doctor/consultations/${item.id}`}
+                              href={doctorConsultationUrl(item.id)}
                               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
                                 ['PENDING', 'CONFIRMED'].includes(item.status)
                                   ? 'bg-secondary text-white medical-shadow'
@@ -225,9 +226,9 @@ const DoctorOverview = () => {
                     </div>
                     <p className="text-sm font-bold mb-4">Always verify patient ID and history before issuing prescriptions.</p>
                     <p className="text-xs text-white/70 leading-relaxed mb-6">Unauthorized issuance of controlled substances is strictly prohibited and monitored.</p>
-                    <button className="w-full py-3 bg-white text-red-600 rounded-xl text-xs font-black hover:bg-slate-100 transition-colors">
+                    <Link href="/patient-guide" className="block w-full py-3 bg-white text-red-600 rounded-xl text-xs font-black hover:bg-slate-100 transition-colors text-center">
                        View Policy
-                    </button>
+                    </Link>
                  </div>
                  <div className="absolute -right-4 -bottom-4 opacity-10">
                     <Stethoscope className="w-32 h-32" />

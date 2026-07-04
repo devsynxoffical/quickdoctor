@@ -1,32 +1,77 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { FileText, ArrowRight } from 'lucide-react';
+import { FileText, ChevronRight } from 'lucide-react';
+import { medicalApi, type MedicalCertificateRow } from '@/lib/api';
+import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 
 export default function DoctorCertificatesPage() {
+  const [rows, setRows] = useState<MedicalCertificateRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    medicalApi
+      .doctorCertificates()
+      .then(setRows)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load certificates'))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 max-w-2xl">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div>
         <h1 className="text-4xl font-black">Medical certificates</h1>
         <p className="text-slate-500 mt-2">
-          Issue sick certificates during an active consultation.
+          Sick certificates issued during consultations. Issue new certificates from the consultation room.
         </p>
       </div>
 
-      <div className="glass p-8 rounded-3xl space-y-4">
-        <FileText className="w-10 h-10 text-secondary" />
-        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-          Open a consultation, then use the <strong>Certificate</strong> tab to issue a sick
-          certificate for that patient. Certificates are linked to the appointment record.
-        </p>
-        <Link
-          href="/doctor/consultations"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-secondary text-white rounded-xl font-black"
-        >
-          Go to consultations <ArrowRight className="w-4 h-4" />
-        </Link>
+      <Link
+        href="/doctor/consultations"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-secondary text-white rounded-xl font-black text-sm"
+      >
+        Go to consultations <ChevronRight className="w-4 h-4" />
+      </Link>
+
+      {loading && <p className="text-slate-400">Loading…</p>}
+      {error && <p className="text-red-600 font-bold text-sm">{error}</p>}
+
+      {!loading && rows.length === 0 && (
+        <p className="text-slate-500 text-sm">No certificates issued yet.</p>
+      )}
+
+      <div className="grid gap-3">
+        {rows.map((cert) => {
+          const patient = cert.appointment?.patient as { firstName?: string; lastName?: string } | undefined;
+          const appointmentId = (cert.appointment as { id?: string } | undefined)?.id;
+
+          return (
+            <div key={cert.id} className="glass p-5 rounded-2xl flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="font-black flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-secondary" />
+                  {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
+                </p>
+                <p className="text-sm text-slate-600 mt-2">{cert.reason}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {new Date(cert.startDate).toLocaleDateString()} – {new Date(cert.endDate).toLocaleDateString()}
+                  · Issued {new Date(cert.issuedAt).toLocaleString()}
+                </p>
+              </div>
+              {appointmentId && (
+                <Link
+                  href={doctorConsultationUrl(appointmentId)}
+                  className="text-sm font-bold text-secondary hover:underline"
+                >
+                  Open consultation
+                </Link>
+              )}
+            </div>
+          );
+        })}
       </div>
     </motion.div>
   );

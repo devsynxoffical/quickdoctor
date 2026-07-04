@@ -1,10 +1,10 @@
 import { placeholderIdParams } from '@/lib/buildStaticParams';
-import ConsultationRoomClient from './ConsultationRoomClient';
+import LegacyConsultationRedirect from './LegacyConsultationRedirect';
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   return placeholderIdParams();
 }
 
-export default function ConsultationRoomPage() {
-  return <ConsultationRoomClient />;
+export default function LegacyConsultationPage() {
+  return <LegacyConsultationRedirect />;
 }

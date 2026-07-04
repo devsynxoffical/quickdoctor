@@ -53,7 +53,7 @@ export async function notifyBookingConfirmed(appointmentId: string) {
   const when = new Date(appointment.dateTime).toLocaleString();
   const base = frontendBase();
   const dashboardUrl = `${base}/dashboard/appointments`;
-  const consultationUrl = `${base}/doctor/consultations/${appointment.id}`;
+  const consultationUrl = `${base}/doctor/consultations/room?id=${appointment.id}`;
 
   const patientJoinUrl = appointment.zoomJoinUrlPatient;
   const doctorHostUrl = appointment.zoomJoinUrlHost;
@@ -85,7 +85,7 @@ export async function notifyBookingConfirmed(appointmentId: string) {
       type: 'NEW_BOOKING',
       title: 'New appointment booked',
       body: `${patientName} booked for ${when}.`,
-      link: `/doctor/consultations/${appointment.id}`,
+      link: `/doctor/consultations/room?id=${appointment.id}`,
       email: {
         to: doctorUser.email,
         subject: 'New patient booking — QuickDoctor',

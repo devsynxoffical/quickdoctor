@@ -128,7 +128,9 @@ export type PrescriptionRow = {
   items?: PrescriptionItem[] | null;
   issuedAt: string;
   appointment?: {
+    id?: string;
     doctor?: { firstName?: string; lastName?: string; specialization?: string };
+    patient?: { firstName?: string; lastName?: string };
   };
 };
 
@@ -147,7 +149,9 @@ export type MedicalCertificateRow = {
   endDate: string;
   issuedAt: string;
   appointment?: {
+    id?: string;
     doctor?: { firstName?: string; lastName?: string };
+    patient?: { firstName?: string; lastName?: string };
   };
 };
 
@@ -315,6 +319,8 @@ export const medicalApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  doctorPrescriptions: () => fetchApi<PrescriptionRow[]>('/medical/prescriptions/doctor'),
+  doctorCertificates: () => fetchApi<MedicalCertificateRow[]>('/medical/certificates/doctor'),
 };
 
 export const appointmentApi = {
@@ -480,4 +486,14 @@ export const adminApi = {
     }),
   deleteCoupon: (id: string) =>
     fetchApi<{ message: string }>(`/admin/coupons/${id}`, { method: 'DELETE' }),
+  createAppointment: (data: {
+    patientId: string;
+    doctorId: string;
+    dateTime: string;
+    notes?: string;
+  }) =>
+    fetchApi<{ message: string; appointmentId: string }>('/admin/appointments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

@@ -1,28 +1,32 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User, Video, FileText, Pill, X, ChevronLeft, AlertCircle, Shield,
+  Video, FileText, Pill, X, ChevronLeft, AlertCircle, Shield,
   Plus, Trash2, Eye, CheckCircle2,
 } from 'lucide-react';
 import { appointmentApi, medicalApi, type PrescriptionRow, type MedicalCertificateRow } from '@/lib/api';
 import { emptyMedicine, itemsFromPrescription, type PrescriptionItem } from '@/lib/prescriptionItems';
+import { doctorVideoCallUrl } from '@/lib/doctorRoutes';
 
-type AppointmentDetail = {
-  id: string;
-  status: string;
-  patientId: string;
-  notes?: string | null;
-  clinicalNotes?: string | null;
-  patient: { firstName: string; lastName: string; dob: string; gender?: string };
-  prescription?: PrescriptionRow | null;
-  certificate?: MedicalCertificateRow | null;
-};
+function resolveAppointmentId(
+  params: ReturnType<typeof useParams>,
+  searchParams: ReturnType<typeof useSearchParams>
+) {
+  const fromQuery = searchParams.get('id');
+  if (fromQuery) return fromQuery;
+  const raw = params?.id;
+  const fromPath = Array.isArray(raw) ? raw[0] : raw;
+  if (fromPath && fromPath !== '_') return String(fromPath);
+  return '';
+}
 
-export default function ConsultationRoomClient() {
-  const { id } = useParams();
+function ConsultationRoomContent() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const appointmentId = resolveAppointmentId(params, searchParams);
   const router = useRouter();
   const [appointment, setAppointment] = useState<AppointmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +41,8 @@ export default function ConsultationRoomClient() {
   const [processing, setProcessing] = useState(false);
 
   const loadAppointment = async () => {
-    const data = (await appointmentApi.get(String(id))) as unknown as AppointmentDetail;
+    if (!appointmentId) return;
+    const data = (await appointmentApi.get(appointmentId)) as unknown as AppointmentDetail;
     setAppointment(data);
     setNotes(data.clinicalNotes || data.notes || '');
     if (data.prescription) {
@@ -54,8 +59,12 @@ export default function ConsultationRoomClient() {
   };
 
   useEffect(() => {
+    if (!appointmentId) {
+      setLoading(false);
+      return;
+    }
     appointmentApi
-      .get(String(id))
+      .get(appointmentId)
       .then((data) => {
         const appt = data as unknown as AppointmentDetail;
         setAppointment(appt);
@@ -74,13 +83,14 @@ export default function ConsultationRoomClient() {
       })
       .catch(() => setMessage('Could not load consultation'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [appointmentId]);
 
   const saveNotes = async () => {
+    if (!appointmentId) return;
     setProcessing(true);
     setMessage(null);
     try {
-      await appointmentApi.saveNotes(String(id), notes);
+      await appointmentApi.saveNotes(appointmentId, notes);
       setMessage('Clinical notes saved');
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'Failed to save notes');
@@ -90,10 +100,18 @@ export default function ConsultationRoomClient() {
   };
 
   const startVideo = async () => {
+    if (!appointmentId) return;
     try {
-      const r = await appointmentApi.getJoin(String(id));
-      if (r.canJoin && r.url) window.open(r.url, '_blank', 'noopener,noreferrer');
-      else setMessage(r.message || 'Video not available yet');
+      const r = await appointmentApi.getJoin(appointmentId);
+      if (r.canJoin && r.url) {
+        if (r.url.includes('/doctor/consultations') || r.url.includes('/doctor/video-call')) {
+          window.open(doctorVideoCallUrl(appointmentId), '_blank', 'noopener,noreferrer');
+        } else {
+          window.open(r.url, '_blank', 'noopener,noreferrer');
+        }
+      } else {
+        setMessage(r.message || 'Video not available yet. Join opens 5 minutes before the appointment.');
+      }
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'Failed to start video');
     }
@@ -115,7 +133,7 @@ export default function ConsultationRoomClient() {
     setMessage(null);
     try {
       await medicalApi.issuePrescription({
-        appointmentId: String(id),
+        appointmentId,
         patientId: appointment.patientId,
         items: validItems,
         instructions: generalInstructions || undefined,
@@ -141,7 +159,7 @@ export default function ConsultationRoomClient() {
     setMessage(null);
     try {
       await medicalApi.issueCertificate({
-        appointmentId: String(id),
+        appointmentId,
         patientId: appointment.patientId,
         ...certData,
       });
@@ -158,7 +176,7 @@ export default function ConsultationRoomClient() {
     if (!confirm('Mark this consultation as completed?')) return;
     setProcessing(true);
     try {
-      await appointmentApi.complete(String(id));
+      await appointmentApi.complete(appointmentId);
       setMessage('Consultation marked complete');
       await loadAppointment();
     } catch (err: unknown) {
@@ -169,6 +187,20 @@ export default function ConsultationRoomClient() {
   };
 
   if (loading) return <div className="p-10 text-center">Loading consultation room…</div>;
+  if (!appointmentId) {
+    return (
+      <div className="p-10 text-center space-y-4">
+        <p className="text-slate-500">No appointment selected.</p>
+        <button
+          type="button"
+          onClick={() => router.push('/doctor/consultations')}
+          className="text-secondary font-bold"
+        >
+          Back to consultations
+        </button>
+      </div>
+    );
+  }
   if (!appointment?.patient) {
     return <div className="p-10 text-center text-slate-500">Consultation not found or access denied.</div>;
   }
@@ -479,5 +511,24 @@ export default function ConsultationRoomClient() {
         </div>
       )}
     </div>
+  );
+}
+
+type AppointmentDetail = {
+  id: string;
+  status: string;
+  patientId: string;
+  notes?: string | null;
+  clinicalNotes?: string | null;
+  patient: { firstName: string; lastName: string; dob: string; gender?: string };
+  prescription?: PrescriptionRow | null;
+  certificate?: MedicalCertificateRow | null;
+};
+
+export default function ConsultationRoomClient() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center text-slate-500">Loading consultation room…</div>}>
+      <ConsultationRoomContent />
+    </Suspense>
   );
 }

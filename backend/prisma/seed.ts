@@ -173,7 +173,7 @@ async function main() {
         data: {
           zoomMeetingId: `dev-${appt.id.slice(0, 8)}`,
           zoomJoinUrlPatient: 'http://localhost:3000/dashboard/appointments',
-          zoomJoinUrlHost: `http://localhost:3000/doctor/consultations/${appt.id}`,
+          zoomJoinUrlHost: `http://localhost:3000/doctor/video-call/room?id=${appt.id}`,
           zoomPassword: 'dev123',
         },
       });

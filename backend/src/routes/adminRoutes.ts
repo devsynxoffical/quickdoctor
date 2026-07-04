@@ -5,6 +5,7 @@ import {
   getSystemStats,
   listAllAppointments,
   listAllPayments,
+  adminCreateAppointment,
 } from '../controllers/adminController';
 import {
   approveApplication,
@@ -32,6 +33,7 @@ router.get('/users', ...admin, getAllUsers);
 router.get('/doctors', ...admin, getDoctors);
 router.get('/stats', ...admin, getSystemStats);
 router.get('/appointments', ...admin, listAllAppointments);
+router.post('/appointments', ...admin, adminCreateAppointment);
 router.get('/payments', ...admin, listAllPayments);
 
 router.get('/applications', ...admin, listApplications);

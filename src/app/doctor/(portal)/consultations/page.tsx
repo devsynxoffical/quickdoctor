@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Video, ChevronRight } from 'lucide-react';
 import { appointmentApi, type AppointmentRow } from '@/lib/api';
+import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 
 export default function DoctorConsultationsPage() {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
@@ -42,7 +43,7 @@ export default function DoctorConsultationsPage() {
               active.map((a) => (
                 <Link
                   key={a.id}
-                  href={`/doctor/consultations/${a.id}`}
+                  href={doctorConsultationUrl(a.id)}
                   className="glass p-5 rounded-2xl flex items-center justify-between hover:scale-[1.01] transition-transform"
                 >
                   <div>
@@ -67,7 +68,7 @@ export default function DoctorConsultationsPage() {
               past.slice(0, 20).map((a) => (
                 <Link
                   key={a.id}
-                  href={`/doctor/consultations/${a.id}`}
+                  href={doctorConsultationUrl(a.id)}
                   className="glass p-5 rounded-2xl flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity"
                 >
                   <div>

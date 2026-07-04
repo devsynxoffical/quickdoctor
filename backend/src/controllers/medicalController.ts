@@ -157,6 +157,50 @@ export const issueCertificate = async (req: AuthRequest, res: Response): Promise
   }
 };
 
+export const getDoctorPrescriptions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
+    if (!doctor) {
+      res.status(200).json([]);
+      return;
+    }
+
+    const prescriptions = await prisma.prescription.findMany({
+      where: { appointment: { doctorId: doctor.id } },
+      include: {
+        appointment: { include: { patient: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+    });
+
+    res.status(200).json(prescriptions);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
+  }
+};
+
+export const getDoctorCertificates = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
+    if (!doctor) {
+      res.status(200).json([]);
+      return;
+    }
+
+    const certificates = await prisma.medicalCertificate.findMany({
+      where: { appointment: { doctorId: doctor.id } },
+      include: {
+        appointment: { include: { patient: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+    });
+
+    res.status(200).json(certificates);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
+  }
+};
+
 export const getMyPrescriptions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;

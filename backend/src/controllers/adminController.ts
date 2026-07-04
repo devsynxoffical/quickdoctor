@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
+import { getPrismaErrorMessage } from '../lib/prismaErrors';
+import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
 
 export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -57,6 +59,87 @@ export const listAllPayments = async (_req: AuthRequest, res: Response): Promise
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Error';
     res.status(500).json({ message: msg });
+  }
+};
+
+export const adminCreateAppointment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { patientId, doctorId, dateTime, notes } = req.body;
+
+    if (!patientId || !doctorId || !dateTime) {
+      res.status(400).json({ message: 'patientId, doctorId, and dateTime are required' });
+      return;
+    }
+
+    const patient = await prisma.patient.findUnique({ where: { id: patientId } });
+    if (!patient) {
+      res.status(404).json({ message: 'Patient not found' });
+      return;
+    }
+
+    const doctor = await prisma.doctor.findFirst({
+      where: {
+        id: doctorId,
+        status: 'APPROVED',
+        profileComplete: true,
+        user: { isActive: true },
+      },
+    });
+
+    if (!doctor) {
+      res.status(404).json({ message: 'Doctor not available for booking' });
+      return;
+    }
+
+    const slot = new Date(dateTime);
+    if (slot <= new Date()) {
+      res.status(400).json({ message: 'Cannot book a past time slot' });
+      return;
+    }
+
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        doctorId,
+        dateTime: slot,
+        status: { in: ['PENDING_PAYMENT', 'CONFIRMED', 'PENDING', 'COMPLETED'] },
+      },
+    });
+
+    if (conflict) {
+      res.status(400).json({ message: 'This time slot is no longer available' });
+      return;
+    }
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        patientId,
+        doctorId,
+        dateTime: slot,
+        status: 'CONFIRMED',
+        notes: notes || 'Booked by admin',
+        priceCents: doctor.consultationFeeCents,
+      },
+    });
+
+    await prisma.payment.create({
+      data: {
+        appointmentId: appointment.id,
+        amountCents: doctor.consultationFeeCents,
+        originalAmountCents: doctor.consultationFeeCents,
+        currency: doctor.currency,
+        status: 'SUCCEEDED',
+        paidAt: new Date(),
+      },
+    });
+
+    await finalizeConfirmedAppointment(appointment.id, req.user?.id);
+
+    res.status(201).json({
+      message: 'Appointment booked and confirmed',
+      appointmentId: appointment.id,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
   }
 };
 

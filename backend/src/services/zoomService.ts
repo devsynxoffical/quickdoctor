@@ -32,7 +32,7 @@ function devMeetingUrls(appointmentId: string) {
   return {
     meetingId: `dev-${appointmentId.slice(0, 8)}`,
     joinUrlPatient: `${base}/dashboard/video-call/${appointmentId}`,
-    joinUrlHost: `${base}/doctor/consultations/${appointmentId}`,
+    joinUrlHost: `${base}/doctor/video-call/room?id=${appointmentId}`,
     password: 'dev123',
   };
 }
