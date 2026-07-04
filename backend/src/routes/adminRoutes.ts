@@ -17,6 +17,12 @@ import {
   adminListSpecialties,
   adminUpdateSpecialty,
 } from '../controllers/specialtyController';
+import {
+  listCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
+} from '../controllers/couponController';
 import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
@@ -36,5 +42,10 @@ router.patch('/applications/:id/reject', ...admin, rejectApplication);
 router.get('/categories', ...admin, adminListSpecialties);
 router.post('/categories', ...admin, adminCreateSpecialty);
 router.patch('/categories/:id', ...admin, adminUpdateSpecialty);
+
+router.get('/coupons', ...admin, listCoupons);
+router.post('/coupons', ...admin, createCoupon);
+router.patch('/coupons/:id', ...admin, updateCoupon);
+router.delete('/coupons/:id', ...admin, deleteCoupon);
 
 export default router;

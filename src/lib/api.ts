@@ -168,6 +168,34 @@ export type CmsSection = {
   contentJson: Record<string, unknown>;
 };
 
+export type MaintenanceSettings = {
+  enabled: boolean;
+  message: string;
+  allowAdminBypass: boolean;
+};
+
+export type CouponRow = {
+  id: string;
+  code: string;
+  description?: string | null;
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  minAmountCents?: number | null;
+  maxUses?: number | null;
+  usedCount: number;
+  expiresAt?: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type CouponPreview = {
+  couponId: string;
+  code: string;
+  originalCents: number;
+  discountCents: number;
+  finalCents: number;
+};
+
 export type CmsPage = {
   id: string;
   slug: string;
@@ -233,14 +261,23 @@ export const publicDoctorApi = {
 };
 
 export const paymentApi = {
-  checkout: (data: { doctorId: string; dateTime: string; notes?: string }) =>
+  checkout: (data: { doctorId: string; dateTime: string; notes?: string; couponCode?: string }) =>
     fetchApi<{
       checkoutUrl?: string;
       appointmentId: string;
       testMode?: boolean;
+      freeCheckout?: boolean;
       devConfirmUrl?: string;
       message?: string;
+      discountCents?: number;
+      finalAmountCents?: number;
+      maintenanceMode?: boolean;
     }>('/payments/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  validateCoupon: (data: { code: string; amountCents: number }) =>
+    fetchApi<CouponPreview>('/payments/validate-coupon', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -310,6 +347,7 @@ export const cmsApi = {
   blogPosts: () => fetchApi<CmsPage[]>('/cms/blog'),
   navigation: (location = 'header') =>
     fetchApi<{ label: string; href: string }[]>(`/cms/navigation?location=${location}`),
+  settings: () => fetchApi<Record<string, unknown>>('/cms/settings'),
 };
 
 export const cmsAdminApi = {
@@ -348,6 +386,12 @@ export const cmsAdminApi = {
       body: JSON.stringify({ items }),
     }),
   auditLogs: () => fetchApi<unknown[]>('/cms/admin/audit-logs'),
+  getSettings: () => fetchApi<Array<{ key: string; value: unknown }>>('/cms/admin/settings'),
+  saveSettings: (settings: Array<{ key: string; value: unknown }>) =>
+    fetchApi<{ message: string }>('/cms/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ settings }),
+    }),
 };
 
 export const accountApi = {
@@ -423,4 +467,17 @@ export const adminApi = {
   doctors: () => fetchApi<unknown[]>('/admin/doctors'),
   appointments: () => fetchApi<unknown[]>('/admin/appointments'),
   payments: () => fetchApi<unknown[]>('/admin/payments'),
+  coupons: () => fetchApi<CouponRow[]>('/admin/coupons'),
+  createCoupon: (data: Record<string, unknown>) =>
+    fetchApi<CouponRow>('/admin/coupons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCoupon: (id: string, data: Record<string, unknown>) =>
+    fetchApi<CouponRow>(`/admin/coupons/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteCoupon: (id: string) =>
+    fetchApi<{ message: string }>(`/admin/coupons/${id}`, { method: 'DELETE' }),
 };

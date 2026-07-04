@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { publicDoctorApi, paymentApi, type PublicDoctor } from '@/lib/api';
+import { publicDoctorApi, paymentApi, type CouponPreview, type PublicDoctor } from '@/lib/api';
 import { getToken, getStoredUser, normalizeRole, getLoginUrl, clearSession } from '@/lib/auth';
-import { Calendar, ArrowLeft, CreditCard } from 'lucide-react';
+import { Calendar, ArrowLeft, CreditCard, Tag } from 'lucide-react';
 import DoctorStars from '@/components/DoctorStars';
 
 type DoctorAvailability = {
@@ -94,6 +94,10 @@ function DoctorBookingContent() {
   const [error, setError] = useState<string | null>(null);
   const [slotHint, setSlotHint] = useState<string | null>(null);
   const [nonPatientRole, setNonPatientRole] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   useEffect(() => {
     const role = normalizeRole(getStoredUser()?.role);
@@ -209,6 +213,26 @@ function DoctorBookingContent() {
     loadSlotsForDate(dateStr, null, true);
   };
 
+  const handleApplyCoupon = async () => {
+    const baseCents = feeCents || doctor?.consultationFeeCents || 0;
+    if (!couponCode.trim()) {
+      setCouponPreview(null);
+      setCouponError(null);
+      return;
+    }
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const preview = await paymentApi.validateCoupon({ code: couponCode, amountCents: baseCents });
+      setCouponPreview(preview);
+    } catch (e: unknown) {
+      setCouponPreview(null);
+      setCouponError(e instanceof Error ? e.message : 'Invalid coupon');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
   const handlePay = async () => {
     if (!selectedSlot) return;
     if (nonPatientRole) {
@@ -231,9 +255,14 @@ function DoctorBookingContent() {
         doctorId: id,
         dateTime: selectedSlot,
         notes,
+        couponCode: couponPreview?.code || couponCode || undefined,
       });
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
+        return;
+      }
+      if (result.freeCheckout && result.appointmentId) {
+        router.push('/dashboard/appointments?booked=1');
         return;
       }
       if (result.testMode && result.appointmentId) {
@@ -281,7 +310,10 @@ function DoctorBookingContent() {
     );
   }
 
-  const fee = (feeCents || doctor.consultationFeeCents) / 100;
+  const baseCents = feeCents || doctor.consultationFeeCents;
+  const fee = baseCents / 100;
+  const discount = (couponPreview?.discountCents || 0) / 100;
+  const total = (couponPreview?.finalCents ?? baseCents) / 100;
   const hoursLabel = availabilityLabel(doctor.availability || []);
 
   return (
@@ -388,9 +420,53 @@ function DoctorBookingContent() {
 
           {error && <p className="text-sm text-red-600 font-bold">{error}</p>}
 
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-primary/5">
-            <span className="font-bold">Consultation fee</span>
-            <span className="text-xl font-black text-primary">€{fee.toFixed(2)}</span>
+          <div className="space-y-3">
+            <label className="text-xs font-black uppercase text-slate-400 flex items-center gap-2">
+              <Tag className="w-4 h-4" /> Coupon code
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                placeholder="Enter promo code"
+                value={couponCode}
+                onChange={(e) => {
+                  setCouponCode(e.target.value.toUpperCase());
+                  setCouponPreview(null);
+                  setCouponError(null);
+                }}
+                className="flex-1 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none uppercase"
+              />
+              <button
+                type="button"
+                onClick={handleApplyCoupon}
+                disabled={couponLoading || !couponCode.trim()}
+                className="px-5 py-4 rounded-2xl bg-slate-900 text-white font-bold text-sm disabled:opacity-50"
+              >
+                {couponLoading ? 'Checking…' : 'Apply'}
+              </button>
+            </div>
+            {couponError && <p className="text-sm text-red-600 font-bold">{couponError}</p>}
+            {couponPreview && (
+              <p className="text-sm text-emerald-700 font-bold">
+                {couponPreview.code} applied — save €{discount.toFixed(2)}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2 p-4 rounded-2xl bg-primary/5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold">Consultation fee</span>
+              <span className="text-lg font-black text-primary">€{fee.toFixed(2)}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex items-center justify-between text-sm text-emerald-700">
+                <span>Discount</span>
+                <span className="font-bold">-€{discount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-2 border-t border-primary/10">
+              <span className="font-black">Total</span>
+              <span className="text-xl font-black text-primary">€{total.toFixed(2)}</span>
+            </div>
           </div>
 
           {payHint && (

@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import { 
   Shield, Users, Stethoscope, Briefcase, 
   Settings, LogOut, Search,
-  ChevronRight, BarChart3, Newspaper,
-  LayoutDashboard, Menu, X, Calendar
+  ChevronRight,   BarChart3, Newspaper,
+  LayoutDashboard, Menu, X, Calendar, Ticket
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from '@/components/NotificationBell';
@@ -89,6 +89,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <SidebarLink href="/admin/cms" icon={Newspaper} label="Site content" active={pathname === '/admin/blog' || pathname === '/admin/cms'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/appointments" icon={Calendar} label="Appointments" active={pathname === '/admin/appointments'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/payments" icon={BarChart3} label="Payments" active={pathname === '/admin/payments'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/admin/coupons" icon={Ticket} label="Coupons" active={pathname === '/admin/coupons'} onClick={() => setIsSidebarOpen(false)} />
           
           <div className="pt-8">
             <p className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Core</p>

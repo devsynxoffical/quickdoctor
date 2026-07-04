@@ -1,14 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PolicyPageFooter from "@/components/PolicyPageFooter";
 import Link from "next/link";
-
-const policyLinks = [
-  { label: "Patient Guide", href: "/patient-guide" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Cookie Policy", href: "/cookies" },
-  { label: "Terms & Conditions", href: "/terms" },
-  { label: "Refund Policy", href: "/refund-policy" },
-];
 
 export default function TermsPage() {
   return (
@@ -246,35 +239,7 @@ export default function TermsPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8 mt-6">
-            <h2 className="text-lg font-black text-primary">Our Policies</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {policyLinks.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="px-3 py-1.5 rounded-full bg-slate-100 text-sm font-semibold text-slate-700 hover:text-primary transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-            <div className="mt-6 text-sm text-slate-600">
-              <p>About us: About, Help, In the Media, Careers, Sitemap</p>
-              <p className="mt-1">Health HQ: Blog, Podcast</p>
-              <p className="mt-1">Social: Facebook, Twitter, Linkedin, Instagram, TikTok</p>
-              <p className="mt-1">App store, Google Play</p>
-              <p className="mt-3">
-                &copy; 2026 QuickDoctor Limited. Registered in Ireland under Company Registration Number 536841.
-              </p>
-              <p className="mt-2">
-                <Link href="#top" className="text-primary font-semibold hover:underline">
-                  Back To Top
-                </Link>
-              </p>
-              <p className="mt-2">A Medihive company</p>
-            </div>
-          </section>
+          <PolicyPageFooter />
         </div>
       </main>
 

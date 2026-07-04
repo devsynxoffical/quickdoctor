@@ -4,6 +4,8 @@ import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
+import { isMaintenanceBlocking } from '../services/siteSettingsService';
+import { applyCoupon, incrementCouponUsage } from '../services/couponService';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
@@ -18,6 +20,32 @@ function getStripe() {
 }
 
 const HOLD_MINUTES = 15;
+const STRIPE_MIN_CENTS = 50;
+
+async function confirmAppointmentPayment(
+  appointmentId: string,
+  paymentId: string,
+  couponId?: string | null,
+  actorUserId?: string,
+  stripePaymentIntentId?: string
+) {
+  await prisma.$transaction([
+    prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'SUCCEEDED',
+        paidAt: new Date(),
+        ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),
+      },
+    }),
+    prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: 'CONFIRMED', holdExpiresAt: null },
+    }),
+  ]);
+  await incrementCouponUsage(couponId);
+  await finalizeConfirmedAppointment(appointmentId, actorUserId);
+}
 
 type StripeWebhookEvent = {
   type: string;
@@ -32,7 +60,13 @@ type StripeWebhookEvent = {
 
 export const createCheckoutSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { doctorId, dateTime, notes } = req.body;
+    const maintenance = await isMaintenanceBlocking(req.user?.role);
+    if (maintenance.blocked) {
+      res.status(503).json({ message: maintenance.message, maintenanceMode: true });
+      return;
+    }
+
+    const { doctorId, dateTime, notes, couponCode } = req.body;
     const userId = req.user?.id;
 
     if (!doctorId || !dateTime) {
@@ -79,7 +113,18 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const amountCents = doctor.consultationFeeCents;
+    const originalCents = doctor.consultationFeeCents;
+    let pricing;
+    try {
+      pricing = await applyCoupon(couponCode, originalCents);
+    } catch (couponError: unknown) {
+      res.status(400).json({
+        message: couponError instanceof Error ? couponError.message : 'Invalid coupon',
+      });
+      return;
+    }
+
+    const amountCents = pricing.finalCents;
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
 
     const appointment = await prisma.appointment.create({
@@ -94,17 +139,30 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       },
     });
 
+    const paymentData = {
+      appointmentId: appointment.id,
+      amountCents,
+      originalAmountCents: originalCents,
+      discountCents: pricing.discountCents,
+      couponId: pricing.couponId || null,
+      currency: doctor.currency,
+      status: 'PENDING' as const,
+    };
+
     const stripe = getStripe();
 
-    if (!stripe) {
-      await prisma.payment.create({
-        data: {
+    if (!stripe || amountCents < STRIPE_MIN_CENTS) {
+      const payment = await prisma.payment.create({ data: paymentData });
+
+      if (amountCents < STRIPE_MIN_CENTS) {
+        await confirmAppointmentPayment(appointment.id, payment.id, pricing.couponId, userId!);
+        res.status(201).json({
+          message: amountCents === 0 ? 'Booking confirmed with coupon' : 'Booking confirmed',
           appointmentId: appointment.id,
-          amountCents,
-          currency: doctor.currency,
-          status: 'PENDING',
-        },
-      });
+          freeCheckout: true,
+        });
+        return;
+      }
 
       res.status(200).json({
         message:
@@ -118,6 +176,10 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
 
     const patientUser = await prisma.user.findUnique({ where: { id: userId! } });
 
+    const lineDescription = pricing.discountCents
+      ? `${new Date(dateTime).toLocaleString()} (coupon ${pricing.code}: -€${(pricing.discountCents / 100).toFixed(2)})`
+      : new Date(dateTime).toLocaleString();
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -129,7 +191,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
             unit_amount: amountCents,
             product_data: {
               name: `Video consultation with Dr. ${doctor.lastName}`,
-              description: new Date(dateTime).toLocaleString(),
+              description: lineDescription,
             },
           },
           quantity: 1,
@@ -139,6 +201,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
         appointmentId: appointment.id,
         patientId: patient.id,
         doctorId: doctor.id,
+        couponId: pricing.couponId || '',
       },
       success_url: `${frontendBase()}/dashboard/appointments?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendBase()}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
@@ -146,11 +209,8 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
 
     await prisma.payment.create({
       data: {
-        appointmentId: appointment.id,
+        ...paymentData,
         stripeSessionId: session.id,
-        amountCents,
-        currency: doctor.currency,
-        status: 'PENDING',
       },
     });
 
@@ -158,6 +218,8 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       checkoutUrl: session.url,
       sessionId: session.id,
       appointmentId: appointment.id,
+      discountCents: pricing.discountCents,
+      finalAmountCents: amountCents,
     });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
@@ -185,18 +247,16 @@ export const devConfirmPayment = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    await prisma.$transaction([
-      prisma.appointment.update({
-        where: { id: appointmentId },
-        data: { status: 'CONFIRMED', holdExpiresAt: null },
-      }),
-      prisma.payment.updateMany({
-        where: { appointmentId },
-        data: { status: 'SUCCEEDED', paidAt: new Date() },
-      }),
-    ]);
+    const payment = await prisma.payment.findFirst({ where: { appointmentId } });
 
-    await finalizeConfirmedAppointment(appointmentId, userId);
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    if (payment.status !== 'SUCCEEDED') {
+      await confirmAppointmentPayment(appointmentId, payment.id, payment.couponId, userId);
+    }
 
     res.json({ message: 'Payment confirmed (dev mode)', appointmentId });
   } catch (error: unknown) {
@@ -237,24 +297,24 @@ export const stripeWebhook = async (req: Request, res: Response): Promise<void> 
     const appointmentId = session.metadata?.appointmentId;
 
     if (appointmentId) {
-      await prisma.$transaction([
-        prisma.payment.updateMany({
-          where: { appointmentId, stripeSessionId: session.id },
-          data: {
-            status: 'SUCCEEDED',
-            paidAt: new Date(),
-            stripePaymentIntentId:
-              typeof session.payment_intent === 'string'
-                ? session.payment_intent
-                : session.payment_intent?.id,
-          },
-        }),
-        prisma.appointment.update({
-          where: { id: appointmentId },
-          data: { status: 'CONFIRMED', holdExpiresAt: null },
-        }),
-      ]);
-      await finalizeConfirmedAppointment(appointmentId);
+      const payment = await prisma.payment.findFirst({
+        where: { appointmentId, stripeSessionId: session.id },
+      });
+
+      if (payment && payment.status !== 'SUCCEEDED') {
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id;
+
+        await confirmAppointmentPayment(
+          appointmentId,
+          payment.id,
+          payment.couponId,
+          undefined,
+          paymentIntentId
+        );
+      }
     }
   }
 
@@ -294,24 +354,19 @@ export const getCheckoutStatus = async (req: AuthRequest, res: Response): Promis
       const session = await stripe.checkout.sessions.retrieve(payment.stripeSessionId);
       if (session.payment_status === 'paid') {
         const appointmentId = payment.appointmentId;
-        await prisma.$transaction([
-          prisma.payment.update({
-            where: { id: payment.id },
-            data: {
-              status: 'SUCCEEDED',
-              paidAt: new Date(),
-              stripePaymentIntentId:
-                typeof session.payment_intent === 'string'
-                  ? session.payment_intent
-                  : session.payment_intent?.id,
-            },
-          }),
-          prisma.appointment.update({
-            where: { id: appointmentId },
-            data: { status: 'CONFIRMED', holdExpiresAt: null },
-          }),
-        ]);
-        await finalizeConfirmedAppointment(appointmentId);
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id;
+
+        await confirmAppointmentPayment(
+          appointmentId,
+          payment.id,
+          payment.couponId,
+          req.user?.id,
+          paymentIntentId
+        );
+
         payment = (await prisma.payment.findFirst({
           where: { id: payment.id },
           include: { appointment: { include: { doctor: true, patient: true } } },

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import MaintenanceGate from "@/components/MaintenanceGate";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -21,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
       <body className="font-jakarta min-h-full flex flex-col bg-white text-slate-900">
-        {children}
+        <MaintenanceGate>{children}</MaintenanceGate>
       </body>
     </html>
   );

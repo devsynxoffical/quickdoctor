@@ -286,6 +286,19 @@ async function main() {
     },
   });
 
+  await prisma.cmsSiteSetting.upsert({
+    where: { key: 'maintenance' },
+    update: {},
+    create: {
+      key: 'maintenance',
+      value: {
+        enabled: false,
+        message: "We're performing scheduled maintenance. Booking will resume shortly.",
+        allowAdminBypass: true,
+      },
+    },
+  });
+
   console.log('Seed complete.');
   console.log('  admin@quickdoctor.com / doctor@quickdoctor.com / patient@quickdoctor.com');
   console.log('  password: password123');
