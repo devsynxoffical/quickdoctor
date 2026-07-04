@@ -5,7 +5,13 @@ export const APP_TIMEZONE_LABEL = 'Poland time (CET/CEST)';
 type DateInput = Date | string | number;
 
 function toDate(value: DateInput): Date {
-  return value instanceof Date ? value : new Date(value);
+  if (value instanceof Date) return value;
+  if (typeof value === 'number') return new Date(value);
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+    return new Date(`${s}Z`);
+  }
+  return new Date(s);
 }
 
 export function formatAppDateTime(value: DateInput): string {
@@ -50,48 +56,34 @@ export function bookingDayOfWeek(dateStr: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
-/** Wall-clock minutes from midnight on a calendar date in APP_TIMEZONE → UTC Date. */
-export function wallTimeInAppTz(dateStr: string, timeMinutes: number): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const hh = Math.floor(timeMinutes / 60);
-  const mm = timeMinutes % 60;
-
-  let utcMs = Date.UTC(y, m - 1, d, hh, mm, 0, 0);
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: APP_TIMEZONE,
+function getTimezoneOffsetMs(date: Date, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit',
     hour12: false,
   });
+  const parts = dtf.formatToParts(date);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const hourPart = parts.find((p) => p.type === 'hour')?.value ?? '0';
+  const hour = Number(hourPart === '24' ? '0' : hourPart);
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
+  return asUtc - date.getTime();
+}
 
-  const read = (ms: number) => {
-    const parts = formatter.formatToParts(new Date(ms));
-    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0';
-    return {
-      y: Number(get('year')),
-      m: Number(get('month')),
-      d: Number(get('day')),
-      h: Number(get('hour') === '24' ? '0' : get('hour')),
-      min: Number(get('minute')),
-    };
-  };
-
-  for (let i = 0; i < 4; i++) {
-    const got = read(utcMs);
-    const diffMin =
-      (y - got.y) * 525600 +
-      (m - got.m) * 43200 +
-      (d - got.d) * 1440 +
-      (hh - got.h) * 60 +
-      (mm - got.min);
-    if (diffMin === 0) break;
-    utcMs -= diffMin * 60_000;
-  }
-
-  return new Date(utcMs);
+/** Wall-clock minutes from midnight on a calendar date in APP_TIMEZONE → UTC Date. */
+export function wallTimeInAppTz(dateStr: string, timeMinutes: number): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const hh = Math.floor(timeMinutes / 60);
+  const mm = timeMinutes % 60;
+  const utcGuess = Date.UTC(y, m - 1, d, hh, mm);
+  const offset = getTimezoneOffsetMs(new Date(utcGuess), APP_TIMEZONE);
+  const refined = getTimezoneOffsetMs(new Date(utcGuess - offset), APP_TIMEZONE);
+  return new Date(utcGuess - refined);
 }
 
 export function startOfAppDay(dateStr: string): Date {

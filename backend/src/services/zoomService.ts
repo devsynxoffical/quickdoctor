@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { formatAppDateTime } from '../lib/appTime';
 
 const ZOOM_API = 'https://api.zoom.us/v2';
 
@@ -157,7 +158,7 @@ export function getJoinUrlForRole(
     return {
       canJoin: false,
       url: null,
-      message: 'Join opens 5 minutes before your appointment time',
+      message: `Join opens 5 minutes before your appointment (${formatAppDateTime(appointment.dateTime)})`,
     };
   }
 

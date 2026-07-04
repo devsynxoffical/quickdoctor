@@ -9,7 +9,7 @@ import Footer from '@/components/Footer';
 import { publicDoctorApi, paymentApi, type CouponPreview, type PublicDoctor } from '@/lib/api';
 import { getToken, getStoredUser, normalizeRole, getLoginUrl, clearSession } from '@/lib/auth';
 import { Calendar, ArrowLeft, CreditCard, Tag } from 'lucide-react';
-import { formatAppTime, bookingDayOfWeek, APP_TIMEZONE_LABEL } from '@/lib/appTime';
+import { formatAppTime, bookingDayOfWeek, APP_TIMEZONE_LABEL, formatAppDateTime, todayInAppTz, addDaysToDateStr } from '@/lib/appTime';
 import DoctorStars from '@/components/DoctorStars';
 
 type DoctorAvailability = {
@@ -21,13 +21,6 @@ type DoctorAvailability = {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 function availabilityLabel(availability: DoctorAvailability[]): string {
   if (!availability.length) return 'No weekly hours set yet';
   const days = [...availability]
@@ -37,12 +30,11 @@ function availabilityLabel(availability: DoctorAvailability[]): string {
   return `${days.join(', ')} · ${startTime}–${endTime} (${APP_TIMEZONE_LABEL})`;
 }
 
-function nextWeekdayOnOrAfter(from: Date, allowedDays: Set<number>): string | null {
+function nextWeekdayOnOrAfter(fromDateStr: string, allowedDays: Set<number>): string | null {
   for (let i = 0; i < 21; i++) {
-    const candidate = new Date(from);
-    candidate.setDate(from.getDate() + i);
-    if (allowedDays.has(candidate.getDay())) {
-      return formatDateInput(candidate);
+    const dateStr = addDaysToDateStr(fromDateStr, i);
+    if (allowedDays.has(bookingDayOfWeek(dateStr))) {
+      return dateStr;
     }
   }
   return null;
@@ -56,13 +48,10 @@ async function findFirstBookableDate(
   const allowedDays = new Set(availability.map((a) => a.dayOfWeek));
   if (!allowedDays.size) return null;
 
-  const start = new Date(`${startFrom}T12:00:00`);
   for (let i = 0; i < 21; i++) {
-    const candidate = new Date(start);
-    candidate.setDate(start.getDate() + i);
-    if (!allowedDays.has(candidate.getDay())) continue;
+    const dateStr = addDaysToDateStr(startFrom, i);
+    if (!allowedDays.has(bookingDayOfWeek(dateStr))) continue;
 
-    const dateStr = formatDateInput(candidate);
     try {
       const r = await publicDoctorApi.slots(doctorId, dateStr);
       if (r.slots.length > 0) {
@@ -173,7 +162,7 @@ function DoctorBookingContent() {
       return;
     }
 
-    const today = formatDateInput(new Date());
+    const today = todayInAppTz();
     const allowedDays = new Set((doctor.availability || []).map((a) => a.dayOfWeek));
 
     if (!allowedDays.size) {
@@ -192,7 +181,7 @@ function DoctorBookingContent() {
         setSelectedSlot(first.slots[0]);
         setSlotHint(null);
       } else {
-        const fallback = nextWeekdayOnOrAfter(new Date(), allowedDays) || today;
+        const fallback = nextWeekdayOnOrAfter(today, allowedDays) || today;
         setDate(fallback);
         await loadSlotsForDate(fallback, null, false);
       }
@@ -352,7 +341,7 @@ function DoctorBookingContent() {
             </label>
             <input
               type="date"
-              min={formatDateInput(new Date())}
+              min={todayInAppTz()}
               value={date}
               onChange={(e) => handleDateChange(e.target.value)}
               className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
@@ -388,6 +377,16 @@ function DoctorBookingContent() {
                 </div>
               )}
             </motion.div>
+          )}
+
+          {selectedSlot && (
+            <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/20">
+              <p className="text-xs font-black uppercase text-slate-400">Your selected time</p>
+              <p className="text-lg font-black text-dark-slate dark:text-white mt-1">
+                {formatAppDateTime(selectedSlot)}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">{APP_TIMEZONE_LABEL}</p>
+            </div>
           )}
 
           <textarea

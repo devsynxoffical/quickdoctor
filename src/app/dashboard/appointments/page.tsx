@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import { Calendar, Video, Clock, Plus, X } from 'lucide-react';
 import { appointmentApi, paymentApi, reviewApi, type AppointmentRow } from '@/lib/api';
-import { formatAppDate, formatAppTime } from '@/lib/appTime';
+import { formatAppDate, formatAppTime, APP_TIMEZONE_LABEL } from '@/lib/appTime';
 import { formatDoctorName, formatStatusLabel } from '@/lib/format';
 
 function formatPrice(cents: number) {
@@ -78,6 +78,7 @@ function AppointmentsContent() {
   const [loading, setLoading] = useState(true);
   const [showBookBanner, setShowBookBanner] = useState(false);
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
+  const [bookingConfirmed, setBookingConfirmed] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -104,9 +105,11 @@ function AppointmentsContent() {
         .status(sessionId)
         .then(() => load())
         .catch(console.error);
+      setBookingConfirmed('Payment successful — your appointment is confirmed.');
     }
     if (searchParams.get('booked') === '1') {
       load();
+      setBookingConfirmed('Your appointment is confirmed.');
     }
     if (searchParams.get('payment') === 'cancelled') {
       const appointmentId = searchParams.get('appointmentId');
@@ -181,6 +184,26 @@ function AppointmentsContent() {
             Book New Appointment
           </Link>
         </div>
+
+        {bookingConfirmed && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass p-6 rounded-3xl border-2 border-green-200 bg-green-50/50 dark:bg-green-950/20 flex items-center justify-between gap-4"
+          >
+            <p className="font-bold text-green-800 dark:text-green-200">
+              {bookingConfirmed} All times are in {APP_TIMEZONE_LABEL}.
+            </p>
+            <button
+              type="button"
+              onClick={() => setBookingConfirmed(null)}
+              className="p-2 text-green-600"
+              aria-label="Dismiss"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
 
         {cancelNotice && (
           <motion.div
@@ -289,6 +312,7 @@ function AppointmentsContent() {
                         {formatAppTime(appt.dateTime)}
                       </span>
                     </div>
+                    <p className="text-[10px] text-slate-400 mt-1">{APP_TIMEZONE_LABEL}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">

@@ -4,23 +4,30 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Video, ChevronLeft, ExternalLink } from 'lucide-react';
+import { Video, ChevronLeft, ExternalLink, Clock } from 'lucide-react';
 import { appointmentApi } from '@/lib/api';
+import { formatAppDateTime, APP_TIMEZONE_LABEL } from '@/lib/appTime';
 
 export default function PatientVideoCallClient() {
   const { id } = useParams();
   const router = useRouter();
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [appointmentTime, setAppointmentTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     appointmentApi
       .getJoin(String(id))
       .then((r) => {
+        if (r.dateTime) {
+          setAppointmentTime(formatAppDateTime(r.dateTime));
+        }
         if (r.canJoin && r.url) {
           if (r.url.includes('/dashboard/video-call/')) {
-            setMessage('Dev mode: your doctor will start the consultation from their portal. Stay on this page until they join.');
+            setMessage(
+              'Dev mode: your doctor will start the consultation from their portal. Stay on this page until they join.'
+            );
           } else {
             setJoinUrl(r.url);
           }
@@ -51,6 +58,14 @@ export default function PatientVideoCallClient() {
           <Video className="w-16 h-16 text-primary mx-auto" />
           <h1 className="text-2xl font-black">Video consultation</h1>
 
+          {appointmentTime && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold">
+              <Clock className="w-4 h-4" />
+              {appointmentTime}
+              <span className="text-primary/70 font-medium">({APP_TIMEZONE_LABEL})</span>
+            </div>
+          )}
+
           {loading && <p className="text-slate-500">Checking your appointment…</p>}
 
           {!loading && joinUrl && (
@@ -68,9 +83,7 @@ export default function PatientVideoCallClient() {
             </>
           )}
 
-          {!loading && !joinUrl && message && (
-            <p className="text-slate-600 text-sm">{message}</p>
-          )}
+          {!loading && !joinUrl && message && <p className="text-slate-600 text-sm">{message}</p>}
 
           <Link href="/dashboard/appointments" className="block text-sm font-bold text-primary">
             View all appointments
