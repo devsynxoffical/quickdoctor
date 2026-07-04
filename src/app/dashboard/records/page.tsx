@@ -167,7 +167,7 @@ export default function RecordsPage() {
                     className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
                   >
                     <Download className="w-4 h-4" />
-                    Download
+                    Download PDF
                   </button>
                 </div>
               </motion.div>
