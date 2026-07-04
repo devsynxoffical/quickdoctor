@@ -356,3 +356,14 @@ model MedicalCertificate {
   endDate   DateTime
   issuedAt  DateTime @default(now())
 }
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  email     String
+  codeHash  String
+  purpose   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+}

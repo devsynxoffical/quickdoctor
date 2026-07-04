@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
-import { sendEmail, passwordResetEmail } from '../services/emailService';
+import { sendEmail, passwordResetEmail, welcomeEmail } from '../services/emailService';
+import { normalizeEmail, sendRegistrationOtp, verifyRegistrationOtp } from '../services/otpService';
 import { AuthRequest } from '../middleware/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
@@ -31,13 +32,47 @@ function publicUserPayload(user: {
   return base;
 }
 
+export const sendRegistrationOtpHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      res.status(400).json({ message: 'Email is required' });
+      return;
+    }
+
+    await sendRegistrationOtp(email);
+    res.status(200).json({ message: 'Verification code sent. Check your email.' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Could not send verification code';
+    res.status(400).json({ message });
+  }
+};
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, firstName, lastName, dob } = req.body;
+    const { email, password, firstName, lastName, dob, otp } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (!email || !password || !firstName || !lastName || !dob || !otp) {
+      res.status(400).json({ message: 'All fields including verification code are required' });
+      return;
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+      res.status(400).json({ message: 'Password must be at least 8 characters' });
+      return;
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) {
       res.status(400).json({ message: 'User already exists' });
+      return;
+    }
+
+    const otpValid = await verifyRegistrationOtp(normalizedEmail, String(otp));
+    if (!otpValid) {
+      res.status(400).json({ message: 'Invalid or expired verification code' });
       return;
     }
 
@@ -45,7 +80,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         role: 'PATIENT',
         isActive: true,
@@ -61,6 +96,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         patient: true,
         doctor: true,
       },
+    });
+
+    const base = frontendBase().replace(/\/$/, '');
+    await sendEmail({
+      to: normalizedEmail,
+      subject: 'Welcome to QuickDoctor',
+      html: welcomeEmail({
+        firstName,
+        dashboardUrl: `${base}/dashboard`,
+        doctorsUrl: `${base}/doctors`,
+      }),
     });
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });

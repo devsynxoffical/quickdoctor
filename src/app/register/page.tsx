@@ -3,7 +3,7 @@
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Stethoscope, User, Calendar, Mail, Lock, UserPlus } from 'lucide-react';
+import { Stethoscope, User, Calendar, Mail, Lock, UserPlus, ShieldCheck } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { authApi } from '@/lib/api';
@@ -16,24 +16,54 @@ function RegisterForm() {
   const redirect = searchParams.get('redirect');
   const intent = searchParams.get('intent');
   const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     dob: '',
     email: '',
     password: '',
+    otp: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'email') {
+      setOtpSent(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!formData.email) {
+      setError('Enter your email first.');
+      return;
+    }
+    setOtpLoading(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const response = await authApi.sendRegistrationOtp(formData.email);
+      setOtpSent(true);
+      setInfo(response.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not send verification code');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.firstName || !formData.lastName || !formData.dob || !formData.email || !formData.password) {
       setError('Please fill in all fields.');
+      return;
+    }
+    if (!formData.otp || formData.otp.length !== 6) {
+      setError('Enter the 6-digit verification code sent to your email.');
       return;
     }
     if (formData.password.length < 8) {
@@ -83,6 +113,12 @@ function RegisterForm() {
           </div>
         )}
 
+        {info && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-sm font-bold">
+            {info}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -129,15 +165,45 @@ function RegisterForm() {
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Email</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={otpLoading || !formData.email}
+                className="shrink-0 px-4 py-4 rounded-2xl bg-slate-900 text-white text-sm font-bold disabled:opacity-50"
+              >
+                {otpLoading ? 'Sending…' : otpSent ? 'Resend' : 'Send code'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">We&apos;ll email a 6-digit code to verify your address.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Verification code</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input
-                type="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                name="otp"
+                value={formData.otp}
                 onChange={handleChange}
                 required
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                placeholder="6-digit code"
+                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary tracking-widest"
               />
             </div>
           </div>

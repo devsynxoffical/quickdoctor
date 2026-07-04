@@ -97,7 +97,7 @@ ZOOM_ACCOUNT_ID=
 ZOOM_CLIENT_ID=
 ZOOM_CLIENT_SECRET=
 RESEND_API_KEY=
-EMAIL_FROM=QuickDoctor <noreply@yourdomain.com>
+EMAIL_FROM="QuickDoctor <noreply@yourdomain.com>"
 ```
 
 Install, migrate DB, build, start:

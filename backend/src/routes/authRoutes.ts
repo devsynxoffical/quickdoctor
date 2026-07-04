@@ -1,9 +1,18 @@
 import { Router } from 'express';
-import { register, login, forgotPassword, resetPassword, getDoctors, getMe } from '../controllers/authController';
+import {
+  register,
+  login,
+  forgotPassword,
+  resetPassword,
+  getDoctors,
+  getMe,
+  sendRegistrationOtpHandler,
+} from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+router.post('/send-registration-otp', sendRegistrationOtpHandler);
 router.post('/register', register);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);

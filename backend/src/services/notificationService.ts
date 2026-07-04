@@ -1,14 +1,24 @@
-import { formatAppDateTime } from '../lib/appTime';
+import { APP_TIMEZONE_LABEL, formatAppDate, formatAppDateTime } from '../lib/appTime';
 import prisma from '../config/db';
 import {
   sendEmail,
   bookingConfirmedEmail,
   doctorNewBookingEmail,
+  prescriptionIssuedEmail,
+  certificateIssuedEmail,
 } from './emailService';
 
 function frontendBase() {
   const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
   return raw.split(',')[0].trim().replace(/\/$/, '');
+}
+
+function formatFee(cents: number, currency = 'EUR'): string {
+  return new Intl.NumberFormat('en-IE', { style: 'currency', currency }).format(cents / 100);
+}
+
+function appointmentReference(id: string): string {
+  return id.slice(0, 8).toUpperCase();
 }
 
 export async function createNotification(params: {
@@ -55,6 +65,8 @@ export async function notifyBookingConfirmed(appointmentId: string) {
   const base = frontendBase();
   const dashboardUrl = `${base}/dashboard/appointments`;
   const consultationUrl = `${base}/doctor/consultations/room?id=${appointment.id}`;
+  const reference = appointmentReference(appointment.id);
+  const fee = formatFee(appointment.priceCents);
 
   const patientJoinUrl = appointment.zoomJoinUrlPatient;
   const doctorHostUrl = appointment.zoomJoinUrlHost;
@@ -72,6 +84,9 @@ export async function notifyBookingConfirmed(appointmentId: string) {
         patientFirstName: appointment.patient.firstName,
         doctorName,
         dateTime: when,
+        timezoneLabel: APP_TIMEZONE_LABEL,
+        fee,
+        reference,
         joinUrl: patientJoinUrl,
         password: appointment.zoomPassword,
         dashboardUrl,
@@ -94,6 +109,9 @@ export async function notifyBookingConfirmed(appointmentId: string) {
           doctorName: appointment.doctor.firstName,
           patientName,
           dateTime: when,
+          timezoneLabel: APP_TIMEZONE_LABEL,
+          fee,
+          reference,
           consultationUrl,
           hostJoinUrl: doctorHostUrl,
         }),
@@ -103,21 +121,87 @@ export async function notifyBookingConfirmed(appointmentId: string) {
 }
 
 export async function notifyPrescriptionIssued(patientUserId: string, appointmentId: string) {
+  const prescription = await prisma.prescription.findUnique({
+    where: { appointmentId },
+    include: {
+      patient: { include: { user: true } },
+      appointment: { include: { doctor: true } },
+    },
+  });
+
+  if (!prescription?.patient?.user || prescription.patient.user.id !== patientUserId) {
+    await createNotification({
+      userId: patientUserId,
+      type: 'PRESCRIPTION_ISSUED',
+      title: 'New prescription available',
+      body: 'Your doctor has issued a prescription. View it in your medical records.',
+      link: '/dashboard/records',
+    });
+    return;
+  }
+
+  const base = frontendBase();
+  const doctorName = `Dr. ${prescription.appointment.doctor.firstName} ${prescription.appointment.doctor.lastName}`;
+
   await createNotification({
     userId: patientUserId,
     type: 'PRESCRIPTION_ISSUED',
     title: 'New prescription available',
     body: 'Your doctor has issued a prescription. View it in your medical records.',
     link: '/dashboard/records',
+    email: {
+      to: prescription.patient.user.email,
+      subject: 'New prescription — QuickDoctor',
+      html: prescriptionIssuedEmail({
+        patientFirstName: prescription.patient.firstName,
+        doctorName,
+        medications: prescription.medications,
+        recordsUrl: `${base}/dashboard/records`,
+      }),
+    },
   });
 }
 
-export async function notifyCertificateIssued(patientUserId: string, _appointmentId: string) {
+export async function notifyCertificateIssued(patientUserId: string, appointmentId: string) {
+  const certificate = await prisma.medicalCertificate.findUnique({
+    where: { appointmentId },
+    include: {
+      patient: { include: { user: true } },
+      appointment: { include: { doctor: true } },
+    },
+  });
+
+  if (!certificate?.patient?.user || certificate.patient.user.id !== patientUserId) {
+    await createNotification({
+      userId: patientUserId,
+      type: 'CERTIFICATE_ISSUED',
+      title: 'Medical certificate ready',
+      body: 'Your medical certificate is available in your medical records.',
+      link: '/dashboard/records',
+    });
+    return;
+  }
+
+  const base = frontendBase();
+  const doctorName = `Dr. ${certificate.appointment.doctor.firstName} ${certificate.appointment.doctor.lastName}`;
+
   await createNotification({
     userId: patientUserId,
     type: 'CERTIFICATE_ISSUED',
     title: 'Medical certificate ready',
     body: 'Your medical certificate is available in your medical records.',
     link: '/dashboard/records',
+    email: {
+      to: certificate.patient.user.email,
+      subject: 'Medical certificate ready — QuickDoctor',
+      html: certificateIssuedEmail({
+        patientFirstName: certificate.patient.firstName,
+        doctorName,
+        reason: certificate.reason,
+        startDate: formatAppDate(certificate.startDate),
+        endDate: formatAppDate(certificate.endDate),
+        recordsUrl: `${base}/dashboard/records`,
+      }),
+    },
   });
 }

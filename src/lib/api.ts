@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-const AUTH_EXEMPT = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+const AUTH_EXEMPT = ['/auth/login', '/auth/register', '/auth/send-registration-otp', '/auth/forgot-password', '/auth/reset-password'];
 
 export async function fetchApi<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -73,6 +73,11 @@ export const authApi = {
     fetchApi<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  sendRegistrationOtp: (email: string) =>
+    fetchApi<{ message: string }>('/auth/send-registration-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     }),
   forgotPassword: (email: string) =>
     fetchApi<{ message: string }>('/auth/forgot-password', {

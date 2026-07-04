@@ -1,4 +1,5 @@
 /** Resend when RESEND_API_KEY is set; otherwise logs to console. */
+import { APP_TIMEZONE_LABEL } from '../lib/appTime';
 
 export async function sendEmail(params: {
   to: string;
@@ -42,26 +43,92 @@ function emailLayout(title: string, body: string) {
   `;
 }
 
+function appointmentDetailsBlock(details: {
+  dateTime: string;
+  timezoneLabel?: string;
+  doctorName?: string;
+  patientName?: string;
+  fee?: string;
+  reference?: string;
+}) {
+  const rows = [
+    details.reference ? `<tr><td style="padding:6px 0;color:#64748b">Reference</td><td style="padding:6px 0;font-weight:bold">${details.reference}</td></tr>` : '',
+    details.dateTime
+      ? `<tr><td style="padding:6px 0;color:#64748b">Date &amp; time</td><td style="padding:6px 0;font-weight:bold">${details.dateTime}${details.timezoneLabel ? `<br><span style="font-size:12px;color:#64748b">${details.timezoneLabel}</span>` : ''}</td></tr>`
+      : '',
+    details.doctorName
+      ? `<tr><td style="padding:6px 0;color:#64748b">Doctor</td><td style="padding:6px 0;font-weight:bold">${details.doctorName}</td></tr>`
+      : '',
+    details.patientName
+      ? `<tr><td style="padding:6px 0;color:#64748b">Patient</td><td style="padding:6px 0;font-weight:bold">${details.patientName}</td></tr>`
+      : '',
+    details.fee
+      ? `<tr><td style="padding:6px 0;color:#64748b">Fee paid</td><td style="padding:6px 0;font-weight:bold">${details.fee}</td></tr>`
+      : '',
+  ].join('');
+
+  return `
+    <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:12px;padding:16px;margin:16px 0">
+      ${rows}
+    </table>
+  `;
+}
+
+export function registrationOtpEmail(params: { code: string; expiresMinutes: number }) {
+  return emailLayout(
+    'Verify your email',
+    `<p>Use this code to complete your QuickDoctor registration:</p>
+     <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#2563eb;margin:24px 0">${params.code}</p>
+     <p style="color:#64748b;font-size:14px">This code expires in ${params.expiresMinutes} minutes. If you did not request this, you can ignore this email.</p>`
+  );
+}
+
+export function welcomeEmail(params: {
+  firstName: string;
+  dashboardUrl: string;
+  doctorsUrl: string;
+}) {
+  return emailLayout(
+    'Welcome to QuickDoctor',
+    `<p>Hi ${params.firstName},</p>
+     <p>Your patient account is ready. You can now book video GP consultations, view prescriptions, and manage appointments online.</p>
+     <p><a href="${params.doctorsUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Find a doctor</a></p>
+     <p style="font-size:13px;color:#64748b">Manage your care anytime from your <a href="${params.dashboardUrl}">patient dashboard</a>.</p>`
+  );
+}
+
 export function bookingConfirmedEmail(params: {
   patientFirstName: string;
   doctorName: string;
   dateTime: string;
+  timezoneLabel?: string;
+  fee?: string;
+  reference?: string;
   joinUrl?: string | null;
   password?: string | null;
   dashboardUrl: string;
 }) {
   const joinBlock = params.joinUrl
     ? `<p><a href="${params.joinUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Join video consultation</a></p>${
-        params.password ? `<p style="font-size:13px;color:#64748b">Meeting password: <strong>${params.password}</strong></p>` : ''
+        params.password
+          ? `<p style="font-size:13px;color:#64748b">Meeting password: <strong>${params.password}</strong></p>`
+          : ''
       }`
     : `<p>Your video link will be available on your <a href="${params.dashboardUrl}">appointments page</a> shortly before the consultation.</p>`;
 
   return emailLayout(
     'Appointment confirmed',
     `<p>Hi ${params.patientFirstName},</p>
-     <p>Your video consultation with <strong>${params.doctorName}</strong> is confirmed for <strong>${params.dateTime}</strong>.</p>
+     <p>Thank you for your payment. Your video consultation is confirmed.</p>
+     ${appointmentDetailsBlock({
+       reference: params.reference,
+       dateTime: params.dateTime,
+       timezoneLabel: params.timezoneLabel || APP_TIMEZONE_LABEL,
+       doctorName: params.doctorName,
+       fee: params.fee,
+     })}
      ${joinBlock}
-     <p style="font-size:13px;color:#64748b">Join opens 5 minutes before your scheduled time.</p>`
+     <p style="font-size:13px;color:#64748b">Join opens 5 minutes before your scheduled time. All times are in ${params.timezoneLabel || APP_TIMEZONE_LABEL}.</p>`
   );
 }
 
@@ -69,6 +136,9 @@ export function doctorNewBookingEmail(params: {
   doctorName: string;
   patientName: string;
   dateTime: string;
+  timezoneLabel?: string;
+  fee?: string;
+  reference?: string;
   consultationUrl: string;
   hostJoinUrl?: string | null;
 }) {
@@ -79,9 +149,53 @@ export function doctorNewBookingEmail(params: {
   return emailLayout(
     'New appointment booked',
     `<p>Hi ${params.doctorName},</p>
-     <p><strong>${params.patientName}</strong> booked a consultation for <strong>${params.dateTime}</strong>.</p>
+     <p>A patient has booked and paid for a consultation.</p>
+     ${appointmentDetailsBlock({
+       reference: params.reference,
+       dateTime: params.dateTime,
+       timezoneLabel: params.timezoneLabel || APP_TIMEZONE_LABEL,
+       patientName: params.patientName,
+       fee: params.fee,
+     })}
      ${joinBlock}
-     <p><a href="${params.consultationUrl}">Open consultation room</a></p>`
+     <p><a href="${params.consultationUrl}">Open consultation room</a> for notes, prescriptions, and certificates.</p>
+     <p style="font-size:13px;color:#64748b">Meeting time is in ${params.timezoneLabel || APP_TIMEZONE_LABEL}.</p>`
+  );
+}
+
+export function prescriptionIssuedEmail(params: {
+  patientFirstName: string;
+  doctorName: string;
+  medications: string;
+  recordsUrl: string;
+}) {
+  return emailLayout(
+    'New prescription available',
+    `<p>Hi ${params.patientFirstName},</p>
+     <p><strong>${params.doctorName}</strong> has issued a new prescription for you.</p>
+     <p style="background:#f8fafc;padding:12px;border-radius:8px"><strong>Medications:</strong> ${params.medications}</p>
+     <p><a href="${params.recordsUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View prescription</a></p>`
+  );
+}
+
+export function certificateIssuedEmail(params: {
+  patientFirstName: string;
+  doctorName: string;
+  reason: string;
+  startDate: string;
+  endDate: string;
+  recordsUrl: string;
+}) {
+  return emailLayout(
+    'Medical certificate ready',
+    `<p>Hi ${params.patientFirstName},</p>
+     <p><strong>${params.doctorName}</strong> has issued a medical certificate for you.</p>
+     ${appointmentDetailsBlock({
+       dateTime: `${params.startDate} – ${params.endDate}`,
+       doctorName: params.doctorName,
+     })}
+     <p style="background:#f8fafc;padding:12px;border-radius:8px"><strong>Reason:</strong> ${params.reason}</p>
+     <p><a href="${params.recordsUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Download certificate</a></p>`
   );
 }
 
