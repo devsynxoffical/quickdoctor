@@ -290,7 +290,7 @@ export const paymentApi = {
       method: 'POST',
     }),
   status: (sessionId: string) =>
-    fetchApi<{ status: string; appointment: AppointmentRow }>(
+    fetchApi<{ status: string; appointment: AppointmentRow; slotUnavailable?: string }>(
       `/payments/status?session_id=${sessionId}`
     ),
 };

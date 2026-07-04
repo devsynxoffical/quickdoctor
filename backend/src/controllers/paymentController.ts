@@ -7,6 +7,7 @@ import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
 import { isMaintenanceBlocking } from '../services/siteSettingsService';
 import { applyCoupon, incrementCouponUsage } from '../services/couponService';
+import { findOccupiedSlotConflict } from '../lib/appointmentSlots';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
@@ -29,7 +30,54 @@ async function confirmAppointmentPayment(
   couponId?: string | null,
   actorUserId?: string,
   stripePaymentIntentId?: string
-) {
+): Promise<{ confirmed: boolean; message?: string }> {
+  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+  if (!appointment) {
+    return { confirmed: false, message: 'Appointment not found' };
+  }
+
+  if (appointment.status !== 'PENDING_PAYMENT') {
+    return { confirmed: true };
+  }
+
+  const conflict = await findOccupiedSlotConflict(
+    appointment.doctorId,
+    appointment.dateTime,
+    appointmentId
+  );
+
+  if (conflict) {
+    await prisma.$transaction([
+      prisma.appointment.update({
+        where: { id: appointmentId },
+        data: { status: 'CANCELLED', holdExpiresAt: null },
+      }),
+      prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: 'FAILED' },
+      }),
+    ]);
+
+    const stripe = getStripe();
+    if (stripe && stripePaymentIntentId) {
+      try {
+        await stripe.refunds.create({ payment_intent: stripePaymentIntentId });
+        await prisma.payment.update({
+          where: { id: paymentId },
+          data: { status: 'REFUNDED' },
+        });
+      } catch {
+        /* refund may need manual handling */
+      }
+    }
+
+    return {
+      confirmed: false,
+      message:
+        'This time slot was just booked by someone else. If you were charged, a refund will be processed.',
+    };
+  }
+
   await prisma.$transaction([
     prisma.payment.update({
       where: { id: paymentId },
@@ -46,6 +94,7 @@ async function confirmAppointmentPayment(
   ]);
   await incrementCouponUsage(couponId);
   await finalizeConfirmedAppointment(appointmentId, actorUserId);
+  return { confirmed: true };
 }
 
 type StripeWebhookEvent = {
@@ -101,13 +150,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        doctorId,
-        dateTime: slot,
-        status: { in: ['PENDING_PAYMENT', 'CONFIRMED', 'PENDING', 'COMPLETED'] },
-      },
-    });
+    const conflict = await findOccupiedSlotConflict(doctorId, slot);
 
     if (conflict) {
       res.status(400).json({ message: 'This time slot is no longer available' });
@@ -156,7 +199,16 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       const payment = await prisma.payment.create({ data: paymentData });
 
       if (amountCents < STRIPE_MIN_CENTS) {
-        await confirmAppointmentPayment(appointment.id, payment.id, pricing.couponId, userId!);
+        const result = await confirmAppointmentPayment(
+          appointment.id,
+          payment.id,
+          pricing.couponId,
+          userId!
+        );
+        if (!result.confirmed) {
+          res.status(409).json({ message: result.message || 'This time slot is no longer available' });
+          return;
+        }
         res.status(201).json({
           message: amountCents === 0 ? 'Booking confirmed with coupon' : 'Booking confirmed',
           appointmentId: appointment.id,
@@ -256,7 +308,16 @@ export const devConfirmPayment = async (req: AuthRequest, res: Response): Promis
     }
 
     if (payment.status !== 'SUCCEEDED') {
-      await confirmAppointmentPayment(appointmentId, payment.id, payment.couponId, userId);
+      const result = await confirmAppointmentPayment(
+        appointmentId,
+        payment.id,
+        payment.couponId,
+        userId
+      );
+      if (!result.confirmed) {
+        res.status(409).json({ message: result.message || 'This time slot is no longer available' });
+        return;
+      }
     }
 
     res.json({ message: 'Payment confirmed (dev mode)', appointmentId });
@@ -380,9 +441,17 @@ export const getCheckoutStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
+    const slotUnavailable =
+      payment.status === 'FAILED' || payment.status === 'REFUNDED'
+        ? 'This time slot was just booked by someone else. If you were charged, a refund will be processed.'
+        : payment.appointment.status === 'CANCELLED' && payment.status === 'SUCCEEDED'
+          ? 'This time slot is no longer available.'
+          : undefined;
+
     res.json({
       status: payment.status,
       appointment: payment.appointment,
+      slotUnavailable,
     });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });

@@ -347,6 +347,9 @@ function DoctorBookingContent() {
               className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
             />
             <p className="text-xs text-slate-500">All times shown in {APP_TIMEZONE_LABEL}.</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              The time slot is only reserved after payment is completed.
+            </p>
           </div>
 
           {date && (

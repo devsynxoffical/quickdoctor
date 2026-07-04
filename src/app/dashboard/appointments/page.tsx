@@ -103,9 +103,15 @@ function AppointmentsContent() {
     if (searchParams.get('payment') === 'success' && sessionId) {
       paymentApi
         .status(sessionId)
-        .then(() => load())
+        .then((result) => {
+          load();
+          if (result.slotUnavailable) {
+            setCancelNotice(result.slotUnavailable);
+          } else {
+            setBookingConfirmed('Payment successful — your appointment is confirmed.');
+          }
+        })
         .catch(console.error);
-      setBookingConfirmed('Payment successful — your appointment is confirmed.');
     }
     if (searchParams.get('booked') === '1') {
       load();
@@ -117,7 +123,7 @@ function AppointmentsContent() {
         appointmentApi
           .cancelPending(appointmentId)
           .then(() => {
-            setCancelNotice('Payment was cancelled. Your appointment hold has been released.');
+            setCancelNotice('Payment was cancelled. You can choose another time slot.');
             load();
           })
           .catch(() => {

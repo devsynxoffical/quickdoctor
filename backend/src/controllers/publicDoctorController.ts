@@ -3,6 +3,7 @@ import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { generateSlotsForDay, type WeeklySlot } from '../utils/slots';
 import { startOfAppDay, endOfAppDay, bookingDayOfWeek } from '../lib/appTime';
+import { SLOT_OCCUPIED_STATUSES } from '../lib/appointmentSlots';
 
 async function reviewStatsByDoctorId(doctorIds: string[]) {
   const map = new Map<string, { averageRating: number | null; reviewCount: number }>();
@@ -144,7 +145,7 @@ export const getDoctorSlots = async (req: Request, res: Response): Promise<void>
       where: {
         doctorId: id,
         dateTime: { gte: startOfDay, lte: endOfDay },
-        status: { in: ['PENDING_PAYMENT', 'CONFIRMED', 'PENDING', 'COMPLETED'] },
+        status: { in: SLOT_OCCUPIED_STATUSES },
       },
       select: { dateTime: true },
     });

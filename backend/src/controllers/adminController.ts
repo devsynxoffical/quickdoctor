@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
+import { findOccupiedSlotConflict } from '../lib/appointmentSlots';
 
 export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -97,13 +98,7 @@ export const adminCreateAppointment = async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        doctorId,
-        dateTime: slot,
-        status: { in: ['PENDING_PAYMENT', 'CONFIRMED', 'PENDING', 'COMPLETED'] },
-      },
-    });
+    const conflict = await findOccupiedSlotConflict(doctorId, slot);
 
     if (conflict) {
       res.status(400).json({ message: 'This time slot is no longer available' });
