@@ -7,7 +7,7 @@ import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
 import { isMaintenanceBlocking } from '../services/siteSettingsService';
 import { applyCoupon, incrementCouponUsage } from '../services/couponService';
-import { findOccupiedSlotConflict } from '../lib/appointmentSlots';
+import { findOccupiedSlotConflict, prepareCheckoutAppointment, normalizeSlotTime, SlotTakenError } from '../lib/appointmentSlots';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
@@ -144,7 +144,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const slot = new Date(dateTime);
+    const slot = normalizeSlotTime(dateTime);
     if (slot <= new Date()) {
       res.status(400).json({ message: 'Cannot book a past time slot' });
       return;
@@ -171,17 +171,26 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
     const amountCents = pricing.finalCents;
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
 
-    const appointment = await prisma.appointment.create({
-      data: {
+    let appointment;
+    let checkoutReused = false;
+    try {
+      const prepared = await prepareCheckoutAppointment({
         patientId: patient.id,
         doctorId: doctor.id,
         dateTime: slot,
-        status: 'PENDING_PAYMENT',
         notes,
         priceCents: amountCents,
         holdExpiresAt,
-      },
-    });
+      });
+      appointment = prepared.appointment;
+      checkoutReused = prepared.reused;
+    } catch (error) {
+      if (error instanceof SlotTakenError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      throw error;
+    }
 
     const paymentData = {
       appointmentId: appointment.id,
@@ -195,8 +204,24 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
 
     const stripe = getStripe();
 
+    const upsertPendingPayment = async (extra?: { stripeSessionId?: string }) => {
+      if (checkoutReused) {
+        return prisma.payment.upsert({
+          where: { appointmentId: appointment.id },
+          create: { ...paymentData, ...extra },
+          update: {
+            ...paymentData,
+            ...extra,
+            paidAt: null,
+            stripePaymentIntentId: null,
+          },
+        });
+      }
+      return prisma.payment.create({ data: { ...paymentData, ...extra } });
+    };
+
     if (!stripe || amountCents < STRIPE_MIN_CENTS) {
-      const payment = await prisma.payment.create({ data: paymentData });
+      const payment = await upsertPendingPayment();
 
       if (amountCents < STRIPE_MIN_CENTS) {
         const result = await confirmAppointmentPayment(
@@ -260,12 +285,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       cancel_url: `${frontendBase()}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
     });
 
-    await prisma.payment.create({
-      data: {
-        ...paymentData,
-        stripeSessionId: session.id,
-      },
-    });
+    await upsertPendingPayment({ stripeSessionId: session.id });
 
     res.status(201).json({
       checkoutUrl: session.url,

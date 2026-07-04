@@ -3,7 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
-import { findOccupiedSlotConflict } from '../lib/appointmentSlots';
+import { findOccupiedSlotConflict, normalizeSlotTime } from '../lib/appointmentSlots';
 
 export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -92,7 +92,7 @@ export const adminCreateAppointment = async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const slot = new Date(dateTime);
+    const slot = normalizeSlotTime(dateTime);
     if (slot <= new Date()) {
       res.status(400).json({ message: 'Cannot book a past time slot' });
       return;
