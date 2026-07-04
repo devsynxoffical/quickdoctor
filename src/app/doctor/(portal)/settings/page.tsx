@@ -4,15 +4,42 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { doctorProfileApi } from '@/lib/api';
 
-const defaultDays = [
-  { dayOfWeek: 1, startTime: '09:00', endTime: '17:00', slotMinutes: 15 },
-  { dayOfWeek: 2, startTime: '09:00', endTime: '17:00', slotMinutes: 15 },
-  { dayOfWeek: 3, startTime: '09:00', endTime: '17:00', slotMinutes: 15 },
-  { dayOfWeek: 4, startTime: '09:00', endTime: '17:00', slotMinutes: 15 },
-  { dayOfWeek: 5, startTime: '09:00', endTime: '17:00', slotMinutes: 15 },
-];
+type AvailabilitySlot = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotMinutes: number;
+  enabled: boolean;
+};
 
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Mon–Fri on by default; Sat/Sun optional */
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+
+const DAY_LABELS: Record<number, string> = {
+  0: 'Sunday',
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday',
+};
+
+function buildWeekTemplate(
+  saved?: Array<{ dayOfWeek: number; startTime: string; endTime: string; slotMinutes?: number }>
+): AvailabilitySlot[] {
+  return WEEK_ORDER.map((dayOfWeek) => {
+    const existing = saved?.find((s) => s.dayOfWeek === dayOfWeek);
+    const defaultEnabled = dayOfWeek >= 1 && dayOfWeek <= 5;
+    return {
+      dayOfWeek,
+      startTime: existing?.startTime || '09:00',
+      endTime: existing?.endTime || '17:00',
+      slotMinutes: existing?.slotMinutes || 15,
+      enabled: existing ? true : saved?.length ? false : defaultEnabled,
+    };
+  });
+}
 
 type DoctorProfile = {
   firstName?: string;
@@ -24,7 +51,7 @@ type DoctorProfile = {
   profileComplete?: boolean;
   user?: { email?: string };
   specialtyCategory?: { name?: string };
-  availability?: typeof defaultDays;
+  availability?: Array<{ dayOfWeek: number; startTime: string; endTime: string; slotMinutes?: number }>;
 };
 
 export default function DoctorSettingsPage() {
@@ -36,7 +63,7 @@ export default function DoctorSettingsPage() {
   const [specialtyName, setSpecialtyName] = useState('');
   const [feeEuro, setFeeEuro] = useState('49');
   const [bio, setBio] = useState('');
-  const [availability, setAvailability] = useState(defaultDays);
+  const [availability, setAvailability] = useState<AvailabilitySlot[]>(() => buildWeekTemplate());
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -55,13 +82,19 @@ export default function DoctorSettingsPage() {
         setSpecialtyName(doc.specialtyCategory?.name || '');
         if (doc.consultationFeeCents) setFeeEuro(String(doc.consultationFeeCents / 100));
         if (doc.bio) setBio(doc.bio);
-        if (doc.availability?.length) setAvailability(doc.availability as typeof defaultDays);
+        setAvailability(buildWeekTemplate(doc.availability));
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : 'Could not load profile');
       })
       .finally(() => setLoadingProfile(false));
   }, []);
+
+  const updateSlot = (dayOfWeek: number, patch: Partial<AvailabilitySlot>) => {
+    setAvailability((prev) =>
+      prev.map((slot) => (slot.dayOfWeek === dayOfWeek ? { ...slot, ...patch } : slot))
+    );
+  };
 
   const save = async () => {
     setSaving(true);
@@ -75,6 +108,21 @@ export default function DoctorSettingsPage() {
       return;
     }
 
+    const activeDays = availability.filter((s) => s.enabled);
+    if (activeDays.length === 0) {
+      setError('Enable at least one day in your weekly availability.');
+      setSaving(false);
+      return;
+    }
+
+    for (const slot of activeDays) {
+      if (slot.startTime >= slot.endTime) {
+        setError(`${DAY_LABELS[slot.dayOfWeek]}: end time must be after start time.`);
+        setSaving(false);
+        return;
+      }
+    }
+
     try {
       await doctorProfileApi.update({
         firstName: firstName.trim(),
@@ -84,7 +132,9 @@ export default function DoctorSettingsPage() {
         profileComplete: true,
       });
       await doctorProfileApi.updateServices({ priceCents, durationMinutes: 15 });
-      await doctorProfileApi.updateAvailability(availability);
+      await doctorProfileApi.updateAvailability(
+        activeDays.map(({ enabled: _enabled, ...slot }) => slot)
+      );
       setMessage('Profile, fees, and availability saved. Patients can book you now.');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Save failed');
@@ -102,7 +152,7 @@ export default function DoctorSettingsPage() {
       <div>
         <h1 className="text-3xl font-black">My profile</h1>
         <p className="text-slate-500 text-sm mt-2">
-          Update your public profile, consultation fee, and weekly availability.
+          Update your public profile, consultation fee, and weekly availability — including weekends.
         </p>
       </div>
 
@@ -177,30 +227,57 @@ export default function DoctorSettingsPage() {
       </div>
 
       <div className="glass p-6 rounded-3xl space-y-4">
-        <p className="text-xs font-black uppercase text-slate-400">Weekly availability</p>
-        {availability.map((slot, idx) => (
-          <div key={slot.dayOfWeek} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center text-sm">
-            <span className="font-bold">{dayNames[slot.dayOfWeek]}</span>
-            <input
-              type="time"
-              value={slot.startTime}
-              onChange={(e) => {
-                const next = [...availability];
-                next[idx] = { ...next[idx], startTime: e.target.value };
-                setAvailability(next);
-              }}
-              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-none"
-            />
-            <input
-              type="time"
-              value={slot.endTime}
-              onChange={(e) => {
-                const next = [...availability];
-                next[idx] = { ...next[idx], endTime: e.target.value };
-                setAvailability(next);
-              }}
-              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-none"
-            />
+        <div>
+          <p className="text-xs font-black uppercase text-slate-400">Weekly availability</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Turn on Saturday or Sunday if you offer weekend consultations.
+          </p>
+        </div>
+
+        {availability.map((slot) => (
+          <div
+            key={slot.dayOfWeek}
+            className={`p-4 rounded-2xl border transition-colors ${
+              slot.enabled
+                ? 'border-secondary/30 bg-secondary/5'
+                : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30'
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={slot.enabled}
+                  onChange={(e) => updateSlot(slot.dayOfWeek, { enabled: e.target.checked })}
+                  className="w-4 h-4 accent-secondary"
+                />
+                <span className="font-bold text-sm">{DAY_LABELS[slot.dayOfWeek]}</span>
+                {slot.dayOfWeek === 6 || slot.dayOfWeek === 0 ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-secondary">
+                    Weekend
+                  </span>
+                ) : null}
+              </label>
+              {slot.enabled ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <input
+                    type="time"
+                    value={slot.startTime}
+                    onChange={(e) => updateSlot(slot.dayOfWeek, { startTime: e.target.value })}
+                    className="p-2 rounded-xl bg-white dark:bg-slate-800 border-none"
+                  />
+                  <span className="text-slate-400">to</span>
+                  <input
+                    type="time"
+                    value={slot.endTime}
+                    onChange={(e) => updateSlot(slot.dayOfWeek, { endTime: e.target.value })}
+                    className="p-2 rounded-xl bg-white dark:bg-slate-800 border-none"
+                  />
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400">Not available</span>
+              )}
+            </div>
           </div>
         ))}
       </div>

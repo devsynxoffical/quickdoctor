@@ -287,7 +287,7 @@ function DoctorBookingContent() {
       : slotsLoading
         ? 'Loading available times…'
         : slots.length === 0
-          ? slotHint || 'Pick a date with open times (Mon–Fri)'
+          ? slotHint || 'Pick a date with open times'
           : 'Select a time slot above'
     : null;
 
