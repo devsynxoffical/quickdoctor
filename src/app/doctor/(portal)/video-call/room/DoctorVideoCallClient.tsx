@@ -12,6 +12,7 @@ export default function DoctorVideoCallClient() {
   const router = useRouter();
   const appointmentId = searchParams.get('id') || '';
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +26,7 @@ export default function DoctorVideoCallClient() {
     appointmentApi
       .getJoin(appointmentId)
       .then((r) => {
+        if (r.displayName) setDisplayName(r.displayName);
         if (r.canJoin && r.url) {
           if (r.url.includes('/doctor/consultations') || r.url.includes('/doctor/video-call')) {
             setMessage(
@@ -65,6 +67,11 @@ export default function DoctorVideoCallClient() {
       <div className="glass p-8 rounded-3xl text-center space-y-6">
         <Video className="w-16 h-16 text-secondary mx-auto" />
         <h1 className="text-2xl font-black">Host video consultation</h1>
+        {displayName && (
+          <p className="text-sm font-bold text-secondary">
+            You will join as {displayName}
+          </p>
+        )}
 
         {loading && <p className="text-slate-500">Checking your appointment…</p>}
 

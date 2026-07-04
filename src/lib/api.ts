@@ -327,7 +327,7 @@ export const appointmentApi = {
   getAll: () => fetchApi<AppointmentRow[]>('/appointments'),
   get: (id: string) => fetchApi<AppointmentRow & { patientId?: string; patient?: unknown }>(`/appointments/${id}`),
   getJoin: (id: string) =>
-    fetchApi<{ canJoin: boolean; url: string | null; message?: string; dateTime?: string }>(
+    fetchApi<{ canJoin: boolean; url: string | null; message?: string; dateTime?: string; displayName?: string }>(
       `/appointments/${id}/join`
     ),
   saveNotes: (id: string, clinicalNotes: string) =>

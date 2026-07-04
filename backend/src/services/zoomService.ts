@@ -3,6 +3,33 @@ import { formatAppDateTime } from '../lib/appTime';
 
 const ZOOM_API = 'https://api.zoom.us/v2';
 
+function formatDoctorZoomName(doctor: { firstName: string; lastName: string }): string {
+  return `Dr. ${doctor.firstName} ${doctor.lastName}`.trim();
+}
+
+function formatPatientZoomName(patient: { firstName: string; lastName: string }): string {
+  return `${patient.firstName} ${patient.lastName}`.trim();
+}
+
+/** Best-effort display name for Zoom join/start links (uname + web client un). */
+export function appendZoomDisplayName(url: string, displayName: string): string {
+  const name = displayName.trim();
+  if (!url || !name) return url;
+  if (url.includes('/doctor/video-call') || url.includes('/dashboard/video-call')) {
+    return url;
+  }
+
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set('uname', name);
+    parsed.searchParams.set('un', Buffer.from(name, 'utf8').toString('base64'));
+    return parsed.toString();
+  } catch {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}uname=${encodeURIComponent(name)}`;
+  }
+}
+
 async function getZoomAccessToken(): Promise<string | null> {
   const accountId = process.env.ZOOM_ACCOUNT_ID;
   const clientId = process.env.ZOOM_CLIENT_ID;
@@ -86,7 +113,7 @@ export async function ensureZoomMeetingForAppointment(appointmentId: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      topic: `QuickDoctor — ${appointment.patient.firstName} ${appointment.patient.lastName}`,
+      topic: `QuickDoctor — ${formatDoctorZoomName(appointment.doctor)} with ${formatPatientZoomName(appointment.patient)}`,
       type: 2,
       start_time: start,
       duration,
@@ -148,8 +175,9 @@ export function getJoinUrlForRole(
     zoomJoinUrlPatient: string | null;
     zoomJoinUrlHost: string | null;
   },
-  role: 'PATIENT' | 'DOCTOR'
-): { canJoin: boolean; url: string | null; message?: string } {
+  role: 'PATIENT' | 'DOCTOR',
+  displayName?: string
+): { canJoin: boolean; url: string | null; message?: string; displayName?: string } {
   if (appointment.status !== 'CONFIRMED') {
     return { canJoin: false, url: null, message: 'Appointment is not confirmed' };
   }
@@ -162,12 +190,14 @@ export function getJoinUrlForRole(
     };
   }
 
-  const url =
+  const rawUrl =
     role === 'DOCTOR' ? appointment.zoomJoinUrlHost : appointment.zoomJoinUrlPatient;
 
-  if (!url) {
+  if (!rawUrl) {
     return { canJoin: false, url: null, message: 'Video link not ready yet' };
   }
 
-  return { canJoin: true, url };
+  const url = displayName ? appendZoomDisplayName(rawUrl, displayName) : rawUrl;
+
+  return { canJoin: true, url, displayName: displayName || undefined };
 }

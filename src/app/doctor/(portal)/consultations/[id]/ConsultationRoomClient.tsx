@@ -10,6 +10,7 @@ import {
 import { appointmentApi, medicalApi, type PrescriptionRow, type MedicalCertificateRow } from '@/lib/api';
 import { emptyMedicine, itemsFromPrescription, type PrescriptionItem } from '@/lib/prescriptionItems';
 import { doctorVideoCallUrl } from '@/lib/doctorRoutes';
+import { formatDoctorName } from '@/lib/format';
 import { downloadPrescriptionPdf, downloadMedicalCertificatePdf } from '@/lib/medicalPdf';
 
 function resolveAppointmentId(
@@ -249,7 +250,12 @@ function ConsultationRoomContent() {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-white/70 px-6">
                 <Video className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                <p className="text-sm font-bold uppercase tracking-widest mb-4">Video consultation</p>
+                <p className="text-sm font-bold uppercase tracking-widest mb-2">Video consultation</p>
+                {appointment.doctor && (
+                  <p className="text-xs text-white/70 mb-4">
+                    Join as {formatDoctorName(appointment.doctor)}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={startVideo}
@@ -550,6 +556,7 @@ type AppointmentDetail = {
   notes?: string | null;
   clinicalNotes?: string | null;
   patient: { firstName: string; lastName: string; dob: string; gender?: string };
+  doctor?: { firstName: string; lastName: string };
   prescription?: PrescriptionRow | null;
   certificate?: MedicalCertificateRow | null;
 };

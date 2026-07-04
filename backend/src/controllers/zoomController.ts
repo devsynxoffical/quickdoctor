@@ -12,6 +12,14 @@ function paramId(id: string | string[] | undefined): string | undefined {
   return Array.isArray(id) ? id[0] : id;
 }
 
+function doctorDisplayName(doctor: { firstName: string; lastName: string }) {
+  return `Dr. ${doctor.firstName} ${doctor.lastName}`.trim();
+}
+
+function patientDisplayName(patient: { firstName: string; lastName: string }) {
+  return `${patient.firstName} ${patient.lastName}`.trim();
+}
+
 export const getAppointmentJoin = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const id = paramId(req.params.id);
@@ -23,7 +31,11 @@ export const getAppointmentJoin = async (req: AuthRequest, res: Response): Promi
       return;
     }
 
-    const appointment = await prisma.appointment.findUnique({ where: { id } });
+    let appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: { doctor: true, patient: true },
+    });
+
     if (!appointment) {
       res.status(404).json({ message: 'Appointment not found' });
       return;
@@ -46,18 +58,27 @@ export const getAppointmentJoin = async (req: AuthRequest, res: Response): Promi
       return;
     }
 
-    let appt = appointment;
-    if (!appt.zoomMeetingId && appt.status === 'CONFIRMED') {
-      appt = (await ensureZoomMeetingForAppointment(id))!;
+    if (!appointment.zoomMeetingId && appointment.status === 'CONFIRMED') {
+      await ensureZoomMeetingForAppointment(id);
+      appointment = (await prisma.appointment.findUnique({
+        where: { id },
+        include: { doctor: true, patient: true },
+      }))!;
     }
 
-    const joinRole = role === 'DOCTOR' ? 'DOCTOR' : 'PATIENT';
-    const result = getJoinUrlForRole(appt, joinRole);
+    const joinRole = role === 'DOCTOR' || role === 'ADMIN' ? 'DOCTOR' : 'PATIENT';
+    const displayName =
+      joinRole === 'DOCTOR'
+        ? doctorDisplayName(appointment.doctor)
+        : patientDisplayName(appointment.patient);
+
+    const result = getJoinUrlForRole(appointment, joinRole, displayName);
 
     res.json({
       ...result,
       appointmentId: id,
-      dateTime: appt.dateTime,
+      dateTime: appointment.dateTime,
+      displayName,
     });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
