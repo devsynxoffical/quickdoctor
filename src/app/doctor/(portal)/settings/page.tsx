@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { doctorProfileApi } from '@/lib/api';
+import { APP_TIMEZONE_LABEL } from '@/lib/appTime';
 
 type AvailabilitySlot = {
   dayOfWeek: number;
@@ -230,7 +231,8 @@ export default function DoctorSettingsPage() {
         <div>
           <p className="text-xs font-black uppercase text-slate-400">Weekly availability</p>
           <p className="text-xs text-slate-500 mt-1">
-            Turn on Saturday or Sunday if you offer weekend consultations.
+            All times are in {APP_TIMEZONE_LABEL}. Turn on Saturday or Sunday if you offer weekend
+            consultations.
           </p>
         </div>
 

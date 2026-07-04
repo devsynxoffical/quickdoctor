@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
+import { formatAppDate, formatAppDateTime, formatAppTime } from '@/lib/appTime';
 import { motion } from 'framer-motion';
 import {
   Video,
@@ -117,11 +118,8 @@ export default function PatientDashboardOverview() {
                 <>
                   Your next consultation is with{' '}
                   {formatDoctorName(nextAppointment.doctor)} on{' '}
-                  {new Date(nextAppointment.dateTime).toLocaleDateString()} at{' '}
-                  {new Date(nextAppointment.dateTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  {formatAppDate(nextAppointment.dateTime)} at{' '}
+                  {formatAppTime(nextAppointment.dateTime)}
                   .
                 </>
               ) : (
@@ -221,7 +219,7 @@ export default function PatientDashboardOverview() {
                           </h4>
                           <p className="text-xs text-slate-500 font-medium">
                             {item.doctor?.specialization || 'Video consultation'} •{' '}
-                            {new Date(item.dateTime).toLocaleString()}
+                            {formatAppDateTime(item.dateTime)}
                           </p>
                         </div>
                       </div>
@@ -283,7 +281,7 @@ export default function PatientDashboardOverview() {
                       <div>
                         <p className="font-bold text-sm">{rx.medications}</p>
                         <p className="text-xs text-slate-500 mt-1">
-                          {rx.dosage} • {new Date(rx.issuedAt).toLocaleDateString()}
+                          {rx.dosage} • {formatAppDate(rx.issuedAt)}
                         </p>
                         {rx.instructions && (
                           <p className="text-xs text-slate-400 mt-1">{rx.instructions}</p>

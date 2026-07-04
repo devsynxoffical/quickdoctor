@@ -1,3 +1,4 @@
+import { formatAppDateTime } from '../lib/appTime';
 import { Response, Request } from 'express';
 import Stripe from 'stripe';
 import prisma from '../config/db';
@@ -177,8 +178,8 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
     const patientUser = await prisma.user.findUnique({ where: { id: userId! } });
 
     const lineDescription = pricing.discountCents
-      ? `${new Date(dateTime).toLocaleString()} (coupon ${pricing.code}: -€${(pricing.discountCents / 100).toFixed(2)})`
-      : new Date(dateTime).toLocaleString();
+      ? `${formatAppDateTime(dateTime)} (coupon ${pricing.code}: -€${(pricing.discountCents / 100).toFixed(2)})`
+      : formatAppDateTime(dateTime);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

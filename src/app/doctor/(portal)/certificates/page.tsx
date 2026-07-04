@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FileText, ChevronRight, Download } from 'lucide-react';
 import { medicalApi, type MedicalCertificateRow } from '@/lib/api';
+import { formatAppDate, formatAppDateTime } from '@/lib/appTime';
 import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 import { downloadMedicalCertificatePdf } from '@/lib/medicalPdf';
 
@@ -59,8 +60,8 @@ export default function DoctorCertificatesPage() {
                 </p>
                 <p className="text-sm text-slate-600 mt-2">{cert.reason}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {new Date(cert.startDate).toLocaleDateString()} – {new Date(cert.endDate).toLocaleDateString()}
-                  · Issued {new Date(cert.issuedAt).toLocaleString()}
+                  {formatAppDate(cert.startDate)} – {formatAppDate(cert.endDate)}
+                  · Issued {formatAppDateTime(cert.issuedAt)}
                 </p>
               </div>
               {appointmentId && (

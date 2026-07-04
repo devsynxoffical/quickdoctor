@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { PrescriptionRow, MedicalCertificateRow } from '@/lib/api';
+import { formatAppDateLong, formatAppDateTime } from '@/lib/appTime';
 import { formatDoctorName } from '@/lib/format';
 import { itemsFromPrescription, type PrescriptionItem } from '@/lib/prescriptionItems';
 
@@ -103,12 +104,7 @@ export function downloadPrescriptionPdf(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const doctor = formatDoctorName(item.appointment?.doctor);
   const patient = options?.patientName || patientNameFromRow(item, getStoredPatientName());
-  const issued = new Date(item.issuedAt);
-  const issuedStr = issued.toLocaleDateString('en-IE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  const issuedStr = formatAppDateLong(item.issuedAt);
   const items = itemsFromPrescription(item);
   const reference = refId(item.id);
 
@@ -198,7 +194,7 @@ export function downloadPrescriptionPdf(
   addFooter(doc, [
     'This is a digitally generated prescription issued following a QuickDoctor telemedicine consultation.',
     'Present this document to your pharmacy. For emergencies call 112 / 999.',
-    `Document ID: ${reference}  •  Generated ${new Date().toLocaleString('en-IE')}`,
+    `Document ID: ${reference}  •  Generated ${formatAppDateTime(new Date())}`,
   ]);
 
   savePdf(doc, `prescription-${reference}.pdf`);
@@ -211,22 +207,9 @@ export function downloadMedicalCertificatePdf(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const doctor = formatDoctorName(item.appointment?.doctor);
   const patient = options?.patientName || patientNameFromRow(item, getStoredPatientName());
-  const issued = new Date(item.issuedAt);
-  const issuedStr = issued.toLocaleDateString('en-IE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  const fromStr = new Date(item.startDate).toLocaleDateString('en-IE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  const toStr = new Date(item.endDate).toLocaleDateString('en-IE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  const issuedStr = formatAppDateLong(item.issuedAt);
+  const fromStr = formatAppDateLong(item.startDate);
+  const toStr = formatAppDateLong(item.endDate);
   const reference = refId(item.id);
 
   addBrandHeader(doc, 'MEDICAL CERTIFICATE', 'QuickDoctor — Sick Certificate / Fit Note');
@@ -285,7 +268,7 @@ export function downloadMedicalCertificatePdf(
   addFooter(doc, [
     'QuickDoctor Ltd — Registered in Ireland. This document is digitally generated and tamper-evident.',
     'Employers may contact support@quickdoctor.ie to verify certificate authenticity.',
-    `Document ID: ${reference}  •  Generated ${new Date().toLocaleString('en-IE')}`,
+    `Document ID: ${reference}  •  Generated ${formatAppDateTime(new Date())}`,
   ]);
 
   savePdf(doc, `medical-certificate-${reference}.pdf`);

@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
-import { generateSlotsForDay, parseBookingDate, type WeeklySlot } from '../utils/slots';
+import { generateSlotsForDay, type WeeklySlot } from '../utils/slots';
+import { startOfAppDay, endOfAppDay, bookingDayOfWeek } from '../lib/appTime';
 
 async function reviewStatsByDoctorId(doctorIds: string[]) {
   const map = new Map<string, { averageRating: number | null; reviewCount: number }>();
@@ -124,8 +125,7 @@ export const getDoctorSlots = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const date = parseBookingDate(dateStr);
-    const dayOfWeek = date.getDay();
+    const dayOfWeek = bookingDayOfWeek(dateStr);
 
     const dayAvailability = doctor.availability.find((a) => a.dayOfWeek === dayOfWeek);
     const weekly: WeeklySlot | undefined = dayAvailability
@@ -137,10 +137,8 @@ export const getDoctorSlots = async (req: Request, res: Response): Promise<void>
         }
       : undefined;
 
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = startOfAppDay(dateStr);
+    const endOfDay = endOfAppDay(dateStr);
 
     const booked = await prisma.appointment.findMany({
       where: {
@@ -153,7 +151,7 @@ export const getDoctorSlots = async (req: Request, res: Response): Promise<void>
 
     const slots = generateSlotsForDay(
       weekly,
-      date,
+      dateStr,
       booked.map((b) => b.dateTime)
     );
 

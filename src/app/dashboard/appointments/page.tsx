@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import { Calendar, Video, Clock, Plus, X } from 'lucide-react';
 import { appointmentApi, paymentApi, reviewApi, type AppointmentRow } from '@/lib/api';
+import { formatAppDate, formatAppTime } from '@/lib/appTime';
 import { formatDoctorName, formatStatusLabel } from '@/lib/format';
 
 function formatPrice(cents: number) {
@@ -281,14 +282,11 @@ function AppointmentsContent() {
                     <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <Calendar className="w-4 h-4 text-primary" />
                       <span className="text-sm font-bold">
-                        {new Date(appt.dateTime).toLocaleDateString()}
+                        {formatAppDate(appt.dateTime)}
                       </span>
                       <Clock className="w-4 h-4 text-primary ml-2" />
                       <span className="text-sm font-bold">
-                        {new Date(appt.dateTime).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatAppTime(appt.dateTime)}
                       </span>
                     </div>
                   </div>

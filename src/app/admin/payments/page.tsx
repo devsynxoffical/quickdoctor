@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { formatAppDateTime } from '@/lib/appTime';
 import { adminApi } from '@/lib/api';
 
 type PaymentRow = {
@@ -42,7 +43,7 @@ export default function AdminPaymentsPage() {
                   <br />
                   <small className="text-slate-500">
                     {p.appointment?.dateTime
-                      ? new Date(p.appointment.dateTime).toLocaleString()
+                      ? formatAppDateTime(p.appointment.dateTime)
                       : '—'}
                   </small>
                 </span>

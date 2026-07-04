@@ -9,6 +9,7 @@ import Footer from '@/components/Footer';
 import { publicDoctorApi, paymentApi, type CouponPreview, type PublicDoctor } from '@/lib/api';
 import { getToken, getStoredUser, normalizeRole, getLoginUrl, clearSession } from '@/lib/auth';
 import { Calendar, ArrowLeft, CreditCard, Tag } from 'lucide-react';
+import { formatAppTime, bookingDayOfWeek, APP_TIMEZONE_LABEL } from '@/lib/appTime';
 import DoctorStars from '@/components/DoctorStars';
 
 type DoctorAvailability = {
@@ -33,7 +34,7 @@ function availabilityLabel(availability: DoctorAvailability[]): string {
     .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
     .map((a) => DAY_NAMES[a.dayOfWeek]);
   const { startTime, endTime } = availability[0];
-  return `${days.join(', ')} · ${startTime}–${endTime}`;
+  return `${days.join(', ')} · ${startTime}–${endTime} (${APP_TIMEZONE_LABEL})`;
 }
 
 function nextWeekdayOnOrAfter(from: Date, allowedDays: Set<number>): string | null {
@@ -139,7 +140,7 @@ function DoctorBookingContent() {
         }
 
         if (r.slots.length === 0 && doctor?.availability?.length) {
-          const day = new Date(`${dateStr}T12:00:00`).getDay();
+          const day = bookingDayOfWeek(dateStr);
           const allowed = doctor.availability.some((a) => a.dayOfWeek === day);
           if (!allowed) {
             setSlotHint(`Not available on ${DAY_NAMES[day]}. ${availabilityLabel(doctor.availability)}`);
@@ -356,6 +357,7 @@ function DoctorBookingContent() {
               onChange={(e) => handleDateChange(e.target.value)}
               className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none"
             />
+            <p className="text-xs text-slate-500">All times shown in {APP_TIMEZONE_LABEL}.</p>
           </div>
 
           {date && (
@@ -380,10 +382,7 @@ function DoctorBookingContent() {
                           : 'bg-slate-100 dark:bg-slate-800 hover:bg-primary/10'
                       }`}
                     >
-                      {new Date(slot).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatAppTime(slot)}
                     </button>
                   ))}
                 </div>

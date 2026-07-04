@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Video, ChevronRight } from 'lucide-react';
 import { appointmentApi, type AppointmentRow } from '@/lib/api';
+import { formatAppDateTime } from '@/lib/appTime';
 import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 
 export default function DoctorConsultationsPage() {
@@ -51,7 +52,7 @@ export default function DoctorConsultationsPage() {
                       {a.patient?.firstName} {a.patient?.lastName}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {new Date(a.dateTime).toLocaleString()} · {a.status}
+                      {formatAppDateTime(a.dateTime)} · {a.status}
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
@@ -76,7 +77,7 @@ export default function DoctorConsultationsPage() {
                       {a.patient?.firstName} {a.patient?.lastName}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {new Date(a.dateTime).toLocaleString()} · {a.status}
+                      {formatAppDateTime(a.dateTime)} · {a.status}
                     </p>
                   </div>
                   <Video className="w-5 h-5 text-slate-400" />

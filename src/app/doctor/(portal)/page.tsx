@@ -11,6 +11,7 @@ import {
 
 import { useEffect, useState } from 'react';
 import { appointmentApi, doctorProfileApi, reviewApi } from '@/lib/api';
+import { formatAppTime } from '@/lib/appTime';
 import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 
 const DoctorOverview = () => {
@@ -152,7 +153,7 @@ const DoctorOverview = () => {
                             </div>
                             <div>
                                <h4 className="font-bold text-lg group-hover:text-secondary transition-colors">{item.patient?.firstName} {item.patient?.lastName}</h4>
-                               <p className="text-xs text-slate-500 font-medium">Consultation • Scheduled at {new Date(item.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                               <p className="text-xs text-slate-500 font-medium">Consultation • Scheduled at {formatAppTime(item.dateTime)}</p>
                             </div>
                          </div>
                          
@@ -191,7 +192,7 @@ const DoctorOverview = () => {
                       upcoming.map((a) => (
                         <div key={a.id} className="flex gap-4">
                           <div className="text-sm font-black text-secondary w-12">
-                            {new Date(a.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatAppTime(a.dateTime)}
                           </div>
                           <div className="flex-1 pb-6 border-l-2 border-slate-100 dark:border-slate-800 pl-6 relative">
                             <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-secondary" />

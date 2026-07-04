@@ -1,3 +1,4 @@
+import { formatAppDateTime } from '../lib/appTime';
 import prisma from '../config/db';
 import {
   sendEmail,
@@ -50,7 +51,7 @@ export async function notifyBookingConfirmed(appointmentId: string) {
 
   const doctorName = `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`;
   const patientName = `${appointment.patient.firstName} ${appointment.patient.lastName}`;
-  const when = new Date(appointment.dateTime).toLocaleString();
+  const when = formatAppDateTime(appointment.dateTime);
   const base = frontendBase();
   const dashboardUrl = `${base}/dashboard/appointments`;
   const consultationUrl = `${base}/doctor/consultations/room?id=${appointment.id}`;

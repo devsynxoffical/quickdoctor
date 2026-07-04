@@ -1,3 +1,5 @@
+import { bookingDayOfWeek, wallTimeInAppTz } from '../lib/appTime';
+
 export type WeeklySlot = {
   dayOfWeek: number;
   startTime: string;
@@ -10,25 +12,18 @@ function parseTime(t: string): number {
   return h * 60 + (m || 0);
 }
 
-function formatTime(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 export function parseBookingDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  return wallTimeInAppTz(dateStr, 12 * 60);
 }
 
 export function generateSlotsForDay(
   availability: WeeklySlot | undefined,
-  date: Date,
+  dateStr: string,
   bookedTimes: Date[]
 ): string[] {
   if (!availability) return [];
 
-  const day = date.getDay();
+  const day = bookingDayOfWeek(dateStr);
   if (availability.dayOfWeek !== day) return [];
 
   const start = parseTime(availability.startTime);
@@ -38,8 +33,7 @@ export function generateSlotsForDay(
   const now = new Date();
 
   for (let t = start; t + step <= end; t += step) {
-    const slotDate = new Date(date);
-    slotDate.setHours(Math.floor(t / 60), t % 60, 0, 0);
+    const slotDate = wallTimeInAppTz(dateStr, t);
     if (slotDate <= now) continue;
 
     const isBooked = bookedTimes.some((b) => new Date(b).getTime() === slotDate.getTime());
@@ -49,11 +43,4 @@ export function generateSlotsForDay(
   }
 
   return slots;
-}
-
-export function combineDateAndSlot(dateStr: string, isoSlot: string): Date {
-  const d = new Date(dateStr);
-  const s = new Date(isoSlot);
-  d.setHours(s.getHours(), s.getMinutes(), 0, 0);
-  return d;
 }

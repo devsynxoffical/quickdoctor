@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Pill, ChevronRight, Download } from 'lucide-react';
 import { medicalApi, type PrescriptionRow } from '@/lib/api';
+import { formatAppDateTime } from '@/lib/appTime';
 import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 import { itemsFromPrescription } from '@/lib/prescriptionItems';
 import { downloadPrescriptionPdf } from '@/lib/medicalPdf';
@@ -61,7 +62,7 @@ export default function DoctorPrescriptionsPage() {
                     {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Issued {new Date(rx.issuedAt).toLocaleString()}
+                    Issued {formatAppDateTime(rx.issuedAt)}
                   </p>
                 </div>
                 {appointmentId && (

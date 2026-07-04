@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { formatAppDateTime } from '@/lib/appTime';
 import { adminApi } from '@/lib/api';
 
 type Row = {
@@ -161,7 +162,7 @@ export default function AdminAppointmentsPage() {
                 <p className="font-bold">
                   {a.patient?.firstName} {a.patient?.lastName} → Dr. {a.doctor?.lastName}
                 </p>
-                <p className="text-sm text-slate-500">{new Date(a.dateTime).toLocaleString()}</p>
+                <p className="text-sm text-slate-500">{formatAppDateTime(a.dateTime)}</p>
               </div>
               <div className="text-right">
                 <span className="text-xs font-black uppercase">{a.status}</span>

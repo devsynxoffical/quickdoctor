@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import { FileText, Pill, Download } from 'lucide-react';
 import { medicalApi, type PrescriptionRow, type MedicalCertificateRow } from '@/lib/api';
+import { formatAppDate } from '@/lib/appTime';
 import { formatDoctorName } from '@/lib/format';
 import { downloadPrescriptionPdf, downloadMedicalCertificatePdf } from '@/lib/medicalPdf';
 import { itemsFromPrescription } from '@/lib/prescriptionItems';
@@ -85,7 +86,7 @@ export default function RecordsPage() {
                       <h3 className="text-xl font-black">{item.medications}</h3>
                       <p className="text-sm font-bold text-slate-500 mt-1">
                         {formatDoctorName(item.appointment?.doctor)} •{' '}
-                        {new Date(item.issuedAt).toLocaleDateString()}
+                        {formatAppDate(item.issuedAt)}
                         {itemsFromPrescription(item).length > 1
                           ? ` · ${itemsFromPrescription(item).length} medicines`
                           : ''}
@@ -147,7 +148,7 @@ export default function RecordsPage() {
                     <h3 className="text-xl font-black">{item.reason}</h3>
                     <p className="text-sm font-bold text-slate-500 mt-1">
                       {formatDoctorName(item.appointment?.doctor)} •{' '}
-                      {new Date(item.issuedAt).toLocaleDateString()}
+                      {formatAppDate(item.issuedAt)}
                     </p>
                   </div>
                 </div>
@@ -157,8 +158,8 @@ export default function RecordsPage() {
                       Duration
                     </p>
                     <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
-                      {new Date(item.startDate).toLocaleDateString()} –{' '}
-                      {new Date(item.endDate).toLocaleDateString()}
+                      {formatAppDate(item.startDate)} –{' '}
+                      {formatAppDate(item.endDate)}
                     </p>
                   </div>
                   <button
