@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   cancelPendingAppointment,
+  completeConsultation,
   createAppointment,
   getAppointments,
   getAppointmentById,
@@ -17,6 +18,7 @@ router.get('/', authenticate, getAppointments);
 router.get('/:id/join', authenticate, getAppointmentJoin);
 router.post('/:id/zoom', authenticate, authorize(['ADMIN', 'DOCTOR']), createZoomMeeting);
 router.patch('/:id/notes', authenticate, authorize(['DOCTOR', 'ADMIN']), updateClinicalNotes);
+router.post('/:id/complete', authenticate, authorize(['DOCTOR', 'ADMIN']), completeConsultation);
 router.patch('/:id/status', authenticate, authorize(['DOCTOR', 'ADMIN']), updateAppointmentStatus);
 router.delete('/:id/pending', authenticate, authorize(['PATIENT']), cancelPendingAppointment);
 router.get('/:id', authenticate, getAppointmentById);

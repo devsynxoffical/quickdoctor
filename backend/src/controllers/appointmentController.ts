@@ -186,6 +186,44 @@ export const updateClinicalNotes = async (req: AuthRequest, res: Response): Prom
   }
 };
 
+export const completeConsultation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const id = paramId(req.params.id);
+    const userId = req.user?.id;
+    if (!id || !userId) {
+      res.status(400).json({ message: 'Invalid request' });
+      return;
+    }
+
+    const doctor = await prisma.doctor.findUnique({ where: { userId } });
+    if (!doctor) {
+      res.status(403).json({ message: 'Doctor profile not found' });
+      return;
+    }
+
+    const existing = await prisma.appointment.findUnique({ where: { id } });
+    if (!existing || existing.doctorId !== doctor.id) {
+      res.status(403).json({ message: 'You cannot update this appointment' });
+      return;
+    }
+
+    if (existing.status !== 'CONFIRMED') {
+      res.status(400).json({ message: 'Only confirmed consultations can be completed' });
+      return;
+    }
+
+    const appointment = await prisma.appointment.update({
+      where: { id },
+      data: { status: 'COMPLETED' },
+      include: { patient: true, prescription: true, certificate: true },
+    });
+
+    res.status(200).json(appointment);
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
 export const cancelPendingAppointment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const id = paramId(req.params.id);

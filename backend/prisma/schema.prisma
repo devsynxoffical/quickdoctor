@@ -315,6 +315,7 @@ model Prescription {
   medications  String
   dosage       String
   instructions String?
+  items        Json?
   issuedAt     DateTime @default(now())
 }
 

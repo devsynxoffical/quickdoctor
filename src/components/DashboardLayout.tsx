@@ -25,6 +25,8 @@ const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: strin
 );
 
 import { useRouter } from 'next/navigation';
+import { authApi } from '@/lib/api';
+import { clearSession, getLoginUrl, getStoredUser, saveSession } from '@/lib/auth';
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -32,34 +34,51 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [user, setUser] = React.useState<any>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [authReady, setAuthReady] = React.useState(false);
 
   React.useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (!token || !storedUser) {
-      const returnTo = encodeURIComponent(pathname || '/dashboard');
-      router.replace(`/login?redirect=${returnTo}`);
-      return;
-    }
-    let u: { role?: string };
-    try {
-      u = JSON.parse(storedUser) as { role?: string };
-    } catch {
-      router.replace('/login?redirect=/dashboard');
-      return;
-    }
-    setUser(u);
-    const role = String(u.role ?? '').toUpperCase();
-    if (role === 'DOCTOR') router.replace('/doctor');
-    else if (role === 'ADMIN') router.replace('/admin');
+    const validate = async () => {
+      const token = localStorage.getItem('token');
+      const storedUser = getStoredUser();
+      if (!token || !storedUser) {
+        router.replace(getLoginUrl(pathname || '/dashboard'));
+        return;
+      }
+
+      try {
+        const { user: liveUser } = await authApi.me();
+        saveSession(token, liveUser);
+        setUser(liveUser);
+        const role = String(liveUser.role ?? '').toUpperCase();
+        if (role === 'DOCTOR') router.replace('/doctor');
+        else if (role === 'ADMIN') router.replace('/admin');
+        setAuthReady(true);
+      } catch {
+        clearSession();
+        router.replace(getLoginUrl(pathname || '/dashboard'));
+      }
+    };
+
+    validate();
+
+    const onExpired = () => router.replace(getLoginUrl(pathname || '/dashboard'));
+    window.addEventListener('session-expired', onExpired);
+    return () => window.removeEventListener('session-expired', onExpired);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSession();
     router.push('/login');
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold">
+        Loading dashboard…
+      </div>
+    );
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

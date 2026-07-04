@@ -7,25 +7,29 @@ import { motion } from 'framer-motion';
 import { FileText, Pill, Download } from 'lucide-react';
 import { medicalApi, type PrescriptionRow, type MedicalCertificateRow } from '@/lib/api';
 import { formatDoctorName, downloadTextFile } from '@/lib/format';
+import { itemsFromPrescription } from '@/lib/prescriptionItems';
 
 function downloadPrescription(item: PrescriptionRow) {
   const doctor = formatDoctorName(item.appointment?.doctor);
-  const text = [
+  const medItems = itemsFromPrescription(item);
+  const lines = [
     'QuickDoctor — Prescription',
     '========================',
     '',
-    `Medication: ${item.medications}`,
-    `Dosage: ${item.dosage}`,
-    item.instructions ? `Instructions: ${item.instructions}` : '',
+    ...medItems.flatMap((med, i) => [
+      `${i + 1}. ${med.name}`,
+      `   Dosage: ${med.dosage}${med.frequency ? ` · ${med.frequency}` : ''}${med.duration ? ` · ${med.duration}` : ''}`,
+      med.instructions ? `   Instructions: ${med.instructions}` : '',
+      '',
+    ]),
+    item.instructions ? `General instructions: ${item.instructions}` : '',
     '',
     `Issued by: ${doctor}`,
     `Date: ${new Date(item.issuedAt).toLocaleString()}`,
     '',
     'Present this at your pharmacy.',
-  ]
-    .filter(Boolean)
-    .join('\n');
-  downloadTextFile(`prescription-${item.id.slice(0, 8)}.txt`, text);
+  ].filter(Boolean);
+  downloadTextFile(`prescription-${item.id.slice(0, 8)}.txt`, lines.join('\n'));
 }
 
 function downloadCertificate(item: MedicalCertificateRow) {
@@ -120,6 +124,9 @@ export default function RecordsPage() {
                       <p className="text-sm font-bold text-slate-500 mt-1">
                         {formatDoctorName(item.appointment?.doctor)} •{' '}
                         {new Date(item.issuedAt).toLocaleDateString()}
+                        {itemsFromPrescription(item).length > 1
+                          ? ` · ${itemsFromPrescription(item).length} medicines`
+                          : ''}
                       </p>
                       {item.instructions && (
                         <p className="text-xs text-slate-400 mt-2">{item.instructions}</p>

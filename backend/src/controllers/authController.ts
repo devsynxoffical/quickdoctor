@@ -232,7 +232,17 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
       include: { patient: true, doctor: true },
     });
 
-    if (!user || !user.isActive) {
+    if (!user) {
+      res.status(401).json({ message: 'Invalid or expired token' });
+      return;
+    }
+
+    if (user.role === 'DOCTOR' && user.doctor?.status === 'PENDING') {
+      res.json({ user: publicUserPayload(user), pendingApproval: true });
+      return;
+    }
+
+    if (!user.isActive) {
       res.status(401).json({ message: 'Invalid or expired token' });
       return;
     }

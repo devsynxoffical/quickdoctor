@@ -2,125 +2,158 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import { logAudit } from '../services/auditService';
-import { notifyPrescriptionIssued } from '../services/notificationService';
+import { notifyCertificateIssued, notifyPrescriptionIssued } from '../services/notificationService';
+import {
+  normalizePrescriptionItems,
+  summarizePrescriptionItems,
+} from '../lib/prescriptionItems';
+
+async function assertDoctorOwnsAppointment(userId: string, appointmentId: string) {
+  const doctor = await prisma.doctor.findUnique({ where: { userId } });
+  if (!doctor) return { error: 'Doctor profile not found', status: 403 as const };
+
+  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+  if (!appointment || appointment.doctorId !== doctor.id) {
+    return { error: 'Invalid appointment for this doctor', status: 403 as const };
+  }
+
+  if (!['CONFIRMED', 'COMPLETED'].includes(appointment.status)) {
+    return { error: 'Prescriptions can only be issued for confirmed consultations', status: 400 as const };
+  }
+
+  return { doctor, appointment };
+}
 
 export const issuePrescription = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { appointmentId, patientId, medications, dosage, instructions } = req.body;
-    const userId = req.user?.id;
+    const { appointmentId, patientId } = req.body;
+    const userId = req.user?.id!;
 
-    const doctor = await prisma.doctor.findUnique({ where: { userId: userId! } });
-    if (!doctor) {
-      res.status(403).json({ message: 'Doctor profile not found' });
+    const check = await assertDoctorOwnsAppointment(userId, appointmentId);
+    if ('error' in check) {
+      res.status(check.status ?? 403).json({ message: check.error });
       return;
     }
 
-    const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
-    if (!appointment || appointment.doctorId !== doctor.id) {
-      res.status(403).json({ message: 'Invalid appointment for this doctor' });
-      return;
-    }
+    const { appointment } = check;
     if (appointment.patientId !== patientId) {
       res.status(400).json({ message: 'Patient does not match appointment' });
       return;
     }
 
-    const existing = await prisma.prescription.findUnique({ where: { appointmentId } });
-    if (existing) {
-      res.status(400).json({ message: 'A prescription already exists for this appointment' });
+    const items = normalizePrescriptionItems(req.body);
+    if (items.length === 0) {
+      res.status(400).json({ message: 'Add at least one medicine with name and dosage' });
       return;
     }
 
-    const prescription = await prisma.prescription.create({
-      data: {
-        appointmentId,
-        patientId,
-        medications,
-        dosage,
-        instructions
-      }
-    });
+    const summary = summarizePrescriptionItems(items);
+    const existing = await prisma.prescription.findUnique({ where: { appointmentId } });
 
-    await prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status: 'COMPLETED' },
-    });
+    const prescription = existing
+      ? await prisma.prescription.update({
+          where: { appointmentId },
+          data: {
+            medications: summary.medications,
+            dosage: summary.dosage,
+            instructions: summary.instructions,
+            items: summary.items,
+          },
+        })
+      : await prisma.prescription.create({
+          data: {
+            appointmentId,
+            patientId,
+            medications: summary.medications,
+            dosage: summary.dosage,
+            instructions: summary.instructions,
+            items: summary.items,
+          },
+        });
 
     const patientUser = await prisma.patient.findUnique({
       where: { id: patientId },
       select: { userId: true },
     });
-    if (patientUser) {
+    if (patientUser && !existing) {
       await notifyPrescriptionIssued(patientUser.userId, appointmentId);
     }
 
     await logAudit({
       actorId: userId,
-      action: 'PRESCRIPTION_ISSUED',
+      action: existing ? 'PRESCRIPTION_UPDATED' : 'PRESCRIPTION_ISSUED',
       entityType: 'Prescription',
       entityId: prescription.id,
-      metadata: { appointmentId },
+      metadata: { appointmentId, itemCount: items.length },
     });
 
-    res.status(201).json(prescription);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(existing ? 200 : 201).json(prescription);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }
 };
 
 export const issueCertificate = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { appointmentId, patientId, reason, startDate, endDate } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.id!;
 
-    const doctor = await prisma.doctor.findUnique({ where: { userId: userId! } });
-    if (!doctor) {
-      res.status(403).json({ message: 'Doctor profile not found' });
+    const check = await assertDoctorOwnsAppointment(userId, appointmentId);
+    if ('error' in check) {
+      res.status(check.status ?? 403).json({ message: check.error });
       return;
     }
 
-    const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
-    if (!appointment || appointment.doctorId !== doctor.id) {
-      res.status(403).json({ message: 'Invalid appointment for this doctor' });
-      return;
-    }
+    const { appointment } = check;
     if (appointment.patientId !== patientId) {
       res.status(400).json({ message: 'Patient does not match appointment' });
       return;
     }
 
-    const existing = await prisma.medicalCertificate.findUnique({ where: { appointmentId } });
-    if (existing) {
-      res.status(400).json({ message: 'A certificate already exists for this appointment' });
+    if (!reason?.trim() || !startDate || !endDate) {
+      res.status(400).json({ message: 'Reason, start date, and end date are required' });
       return;
     }
 
-    const certificate = await prisma.medicalCertificate.create({
-      data: {
-        appointmentId,
-        patientId,
-        reason,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate)
-      }
-    });
+    const existing = await prisma.medicalCertificate.findUnique({ where: { appointmentId } });
+    const certificate = existing
+      ? await prisma.medicalCertificate.update({
+          where: { appointmentId },
+          data: {
+            reason: String(reason).trim(),
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+          },
+        })
+      : await prisma.medicalCertificate.create({
+          data: {
+            appointmentId,
+            patientId,
+            reason: String(reason).trim(),
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+          },
+        });
 
-    await prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status: 'COMPLETED' },
+    const patientUser = await prisma.patient.findUnique({
+      where: { id: patientId },
+      select: { userId: true },
     });
+    if (patientUser && !existing) {
+      await notifyCertificateIssued(patientUser.userId, appointmentId);
+    }
 
     await logAudit({
       actorId: userId,
-      action: 'CERTIFICATE_ISSUED',
+      action: existing ? 'CERTIFICATE_UPDATED' : 'CERTIFICATE_ISSUED',
       entityType: 'MedicalCertificate',
       entityId: certificate.id,
       metadata: { appointmentId },
     });
 
-    res.status(201).json(certificate);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(existing ? 200 : 201).json(certificate);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }
 };
 
@@ -140,8 +173,8 @@ export const getMyPrescriptions = async (req: AuthRequest, res: Response): Promi
     });
 
     res.status(200).json(prescriptions);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }
 };
 
@@ -161,7 +194,7 @@ export const getMyCertificates = async (req: AuthRequest, res: Response): Promis
     });
 
     res.status(200).json(certificates);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }
 };

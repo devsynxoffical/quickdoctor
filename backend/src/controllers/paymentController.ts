@@ -265,12 +265,55 @@ export const getCheckoutStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const payment = await prisma.payment.findFirst({
+    let payment = await prisma.payment.findFirst({
       where: { stripeSessionId: sessionId },
       include: {
-        appointment: { include: { doctor: true } },
+        appointment: { include: { doctor: true, patient: true } },
       },
     });
+
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    if (req.user?.role === 'PATIENT') {
+      const patient = await prisma.patient.findUnique({ where: { userId: req.user.id } });
+      if (!patient || payment.appointment.patientId !== patient.id) {
+        res.status(403).json({ message: 'Access denied' });
+        return;
+      }
+    }
+
+    const stripe = getStripe();
+    if (stripe && payment.status === 'PENDING' && payment.stripeSessionId) {
+      const session = await stripe.checkout.sessions.retrieve(payment.stripeSessionId);
+      if (session.payment_status === 'paid') {
+        const appointmentId = payment.appointmentId;
+        await prisma.$transaction([
+          prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: 'SUCCEEDED',
+              paidAt: new Date(),
+              stripePaymentIntentId:
+                typeof session.payment_intent === 'string'
+                  ? session.payment_intent
+                  : session.payment_intent?.id,
+            },
+          }),
+          prisma.appointment.update({
+            where: { id: appointmentId },
+            data: { status: 'CONFIRMED', holdExpiresAt: null },
+          }),
+        ]);
+        await finalizeConfirmedAppointment(appointmentId);
+        payment = (await prisma.payment.findFirst({
+          where: { id: payment.id },
+          include: { appointment: { include: { doctor: true, patient: true } } },
+        }))!;
+      }
+    }
 
     if (!payment) {
       res.status(404).json({ message: 'Payment not found' });

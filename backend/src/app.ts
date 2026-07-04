@@ -72,7 +72,20 @@ app.get('/health', async (_req, res) => {
     });
     return;
   }
-  res.json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    database: 'connected',
+    integrations: {
+      stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+      stripeWebhook: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+      zoom: Boolean(
+        process.env.ZOOM_ACCOUNT_ID &&
+          process.env.ZOOM_CLIENT_ID &&
+          process.env.ZOOM_CLIENT_SECRET
+      ),
+    },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export default app;

@@ -31,7 +31,7 @@ function devMeetingUrls(appointmentId: string) {
   const base = frontendBase();
   return {
     meetingId: `dev-${appointmentId.slice(0, 8)}`,
-    joinUrlPatient: `${base}/dashboard/appointments?join=${appointmentId}`,
+    joinUrlPatient: `${base}/dashboard/video-call/${appointmentId}`,
     joinUrlHost: `${base}/doctor/consultations/${appointmentId}`,
     password: 'dev123',
   };

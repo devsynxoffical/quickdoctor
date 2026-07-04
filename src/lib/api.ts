@@ -125,10 +125,19 @@ export type PrescriptionRow = {
   medications: string;
   dosage: string;
   instructions?: string | null;
+  items?: PrescriptionItem[] | null;
   issuedAt: string;
   appointment?: {
     doctor?: { firstName?: string; lastName?: string; specialization?: string };
   };
+};
+
+export type PrescriptionItem = {
+  name: string;
+  dosage: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
 };
 
 export type MedicalCertificateRow = {
@@ -248,6 +257,27 @@ export const paymentApi = {
 export const medicalApi = {
   prescriptions: () => fetchApi<PrescriptionRow[]>('/medical/prescriptions/me'),
   certificates: () => fetchApi<MedicalCertificateRow[]>('/medical/certificates/me'),
+  issuePrescription: (data: {
+    appointmentId: string;
+    patientId: string;
+    items: PrescriptionItem[];
+    instructions?: string;
+  }) =>
+    fetchApi<PrescriptionRow>('/medical/prescription', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  issueCertificate: (data: {
+    appointmentId: string;
+    patientId: string;
+    reason: string;
+    startDate: string;
+    endDate: string;
+  }) =>
+    fetchApi<MedicalCertificateRow>('/medical/certificate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export const appointmentApi = {
@@ -260,6 +290,8 @@ export const appointmentApi = {
       method: 'PATCH',
       body: JSON.stringify({ clinicalNotes }),
     }),
+  complete: (id: string) =>
+    fetchApi<AppointmentRow>(`/appointments/${id}/complete`, { method: 'POST' }),
   cancelPending: (id: string) =>
     fetchApi<{ message: string }>(`/appointments/${id}/pending`, { method: 'DELETE' }),
 };

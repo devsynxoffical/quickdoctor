@@ -27,18 +27,33 @@ fi
 
 echo "==> Backend..."
 cd "$APP_DIR/backend"
+
+# Preserve integration secrets across redeploys
+OLD_ENV="$APP_DIR/backend/.env"
+read_old() {
+  if [ -f "$OLD_ENV" ]; then
+    grep -E "^${1}=" "$OLD_ENV" 2>/dev/null | head -1 | cut -d= -f2- || true
+  fi
+}
+SAVED_STRIPE_KEY="$(read_old STRIPE_SECRET_KEY)"
+SAVED_STRIPE_WEBHOOK="$(read_old STRIPE_WEBHOOK_SECRET)"
+SAVED_ZOOM_ACCOUNT="$(read_old ZOOM_ACCOUNT_ID)"
+SAVED_ZOOM_CLIENT="$(read_old ZOOM_CLIENT_ID)"
+SAVED_ZOOM_SECRET="$(read_old ZOOM_CLIENT_SECRET)"
+SAVED_RESEND="$(read_old RESEND_API_KEY)"
+
 cat > .env <<EOF
 PORT=5000
 NODE_ENV=production
 DATABASE_URL="postgresql://quickdoctor:${DB_PASS}@127.0.0.1:5432/quickdoctor?schema=public"
 JWT_SECRET="${JWT_SECRET}"
 FRONTEND_URL=https://${SITE_DOMAIN},https://www.${SITE_DOMAIN}
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-ZOOM_ACCOUNT_ID=
-ZOOM_CLIENT_ID=
-ZOOM_CLIENT_SECRET=
-RESEND_API_KEY=
+STRIPE_SECRET_KEY=${SAVED_STRIPE_KEY}
+STRIPE_WEBHOOK_SECRET=${SAVED_STRIPE_WEBHOOK}
+ZOOM_ACCOUNT_ID=${SAVED_ZOOM_ACCOUNT}
+ZOOM_CLIENT_ID=${SAVED_ZOOM_CLIENT}
+ZOOM_CLIENT_SECRET=${SAVED_ZOOM_SECRET}
+RESEND_API_KEY=${SAVED_RESEND}
 EMAIL_FROM=QuickDoctor <noreply@${SITE_DOMAIN}>
 EOF
 

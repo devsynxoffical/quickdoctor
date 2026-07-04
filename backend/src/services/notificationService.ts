@@ -110,3 +110,13 @@ export async function notifyPrescriptionIssued(patientUserId: string, appointmen
     link: '/dashboard/records',
   });
 }
+
+export async function notifyCertificateIssued(patientUserId: string, _appointmentId: string) {
+  await createNotification({
+    userId: patientUserId,
+    type: 'CERTIFICATE_ISSUED',
+    title: 'Medical certificate ready',
+    body: 'Your medical certificate is available in your medical records.',
+    link: '/dashboard/records',
+  });
+}
