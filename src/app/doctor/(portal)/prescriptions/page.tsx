@@ -3,10 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Pill, ChevronRight } from 'lucide-react';
+import { Pill, ChevronRight, Download } from 'lucide-react';
 import { medicalApi, type PrescriptionRow } from '@/lib/api';
 import { doctorConsultationUrl } from '@/lib/doctorRoutes';
 import { itemsFromPrescription } from '@/lib/prescriptionItems';
+import { downloadPrescriptionPdf } from '@/lib/medicalPdf';
 
 export default function DoctorPrescriptionsPage() {
   const [rows, setRows] = useState<PrescriptionRow[]>([]);
@@ -47,7 +48,8 @@ export default function DoctorPrescriptionsPage() {
       <div className="grid gap-3">
         {rows.map((rx) => {
           const patient = rx.appointment?.patient as { firstName?: string; lastName?: string } | undefined;
-          const appointmentId = (rx.appointment as { id?: string } | undefined)?.id;
+          const patientName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : undefined;
+          const appointmentId = rx.appointment?.id;
           const items = itemsFromPrescription(rx);
 
           return (
@@ -63,12 +65,21 @@ export default function DoctorPrescriptionsPage() {
                   </p>
                 </div>
                 {appointmentId && (
-                  <Link
-                    href={doctorConsultationUrl(appointmentId)}
-                    className="text-sm font-bold text-secondary hover:underline"
-                  >
-                    Open consultation
-                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => downloadPrescriptionPdf(rx, { patientName })}
+                      className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline"
+                    >
+                      <Download className="w-4 h-4" /> PDF
+                    </button>
+                    <Link
+                      href={doctorConsultationUrl(appointmentId)}
+                      className="text-sm font-bold text-secondary hover:underline"
+                    >
+                      Open consultation
+                    </Link>
+                  </div>
                 )}
               </div>
               <ul className="text-sm text-slate-600 space-y-1">

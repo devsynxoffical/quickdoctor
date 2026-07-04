@@ -5,11 +5,12 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Video, FileText, Pill, X, ChevronLeft, AlertCircle, Shield,
-  Plus, Trash2, Eye, CheckCircle2,
+  Plus, Trash2, Eye, CheckCircle2, Download,
 } from 'lucide-react';
 import { appointmentApi, medicalApi, type PrescriptionRow, type MedicalCertificateRow } from '@/lib/api';
 import { emptyMedicine, itemsFromPrescription, type PrescriptionItem } from '@/lib/prescriptionItems';
 import { doctorVideoCallUrl } from '@/lib/doctorRoutes';
+import { downloadPrescriptionPdf, downloadMedicalCertificatePdf } from '@/lib/medicalPdf';
 
 function resolveAppointmentId(
   params: ReturnType<typeof useParams>,
@@ -291,6 +292,34 @@ function ConsultationRoomContent() {
                   <br />
                   {appointment.certificate ? '✓ Certificate on file' : 'No certificate yet'}
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {appointment.prescription && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadPrescriptionPdf(appointment.prescription!, {
+                          patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+                        })
+                      }
+                      className="inline-flex items-center gap-1 text-xs font-bold text-primary"
+                    >
+                      <Download className="w-3 h-3" /> Rx PDF
+                    </button>
+                  )}
+                  {appointment.certificate && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadMedicalCertificatePdf(appointment.certificate!, {
+                          patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+                        })
+                      }
+                      className="inline-flex items-center gap-1 text-xs font-bold text-primary"
+                    >
+                      <Download className="w-3 h-3" /> Cert PDF
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

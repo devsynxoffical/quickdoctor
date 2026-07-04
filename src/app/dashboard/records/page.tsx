@@ -6,47 +6,9 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import { FileText, Pill, Download } from 'lucide-react';
 import { medicalApi, type PrescriptionRow, type MedicalCertificateRow } from '@/lib/api';
-import { formatDoctorName, downloadTextFile } from '@/lib/format';
+import { formatDoctorName } from '@/lib/format';
+import { downloadPrescriptionPdf, downloadMedicalCertificatePdf } from '@/lib/medicalPdf';
 import { itemsFromPrescription } from '@/lib/prescriptionItems';
-
-function downloadPrescription(item: PrescriptionRow) {
-  const doctor = formatDoctorName(item.appointment?.doctor);
-  const medItems = itemsFromPrescription(item);
-  const lines = [
-    'QuickDoctor — Prescription',
-    '========================',
-    '',
-    ...medItems.flatMap((med, i) => [
-      `${i + 1}. ${med.name}`,
-      `   Dosage: ${med.dosage}${med.frequency ? ` · ${med.frequency}` : ''}${med.duration ? ` · ${med.duration}` : ''}`,
-      med.instructions ? `   Instructions: ${med.instructions}` : '',
-      '',
-    ]),
-    item.instructions ? `General instructions: ${item.instructions}` : '',
-    '',
-    `Issued by: ${doctor}`,
-    `Date: ${new Date(item.issuedAt).toLocaleString()}`,
-    '',
-    'Present this at your pharmacy.',
-  ].filter(Boolean);
-  downloadTextFile(`prescription-${item.id.slice(0, 8)}.txt`, lines.join('\n'));
-}
-
-function downloadCertificate(item: MedicalCertificateRow) {
-  const doctor = formatDoctorName(item.appointment?.doctor);
-  const text = [
-    'QuickDoctor — Medical Certificate',
-    '=================================',
-    '',
-    `Reason: ${item.reason}`,
-    `From: ${new Date(item.startDate).toLocaleDateString()}`,
-    `To: ${new Date(item.endDate).toLocaleDateString()}`,
-    '',
-    `Issued by: ${doctor}`,
-    `Issued on: ${new Date(item.issuedAt).toLocaleString()}`,
-  ].join('\n');
-  downloadTextFile(`certificate-${item.id.slice(0, 8)}.txt`, text);
-}
 
 export default function RecordsPage() {
   const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
@@ -144,11 +106,11 @@ export default function RecordsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => downloadPrescription(item)}
+                      onClick={() => downloadPrescriptionPdf(item)}
                       className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
                     >
                       <Download className="w-4 h-4" />
-                      Download
+                      Download PDF
                     </button>
                   </div>
                 </motion.div>
@@ -201,7 +163,7 @@ export default function RecordsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => downloadCertificate(item)}
+                    onClick={() => downloadMedicalCertificatePdf(item)}
                     className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
                   >
                     <Download className="w-4 h-4" />
