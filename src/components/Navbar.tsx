@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Menu, ChevronDown, ChevronRight, X, LogIn } from 'lucide-react';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/UserMenu';
+import { cmsApi } from '@/lib/api';
 import {
   BOOKING_APPOINTMENTS_PATH,
   getLoginUrl,
@@ -78,6 +79,13 @@ const consultationRouteMap: Record<string, string> = {
   "Video Consultation in Spanish": "/consultation/spanish",
 };
 
+const consultationSlugMap: Record<string, string> = {
+  "Video Consultation with a Female Doctor": "consultation-female-doctor",
+  "Video Consultation with a Male Doctor": "consultation-male-doctor",
+  "Video Consultation in Portuguese": "consultation-portuguese",
+  "Video Consultation in Spanish": "consultation-spanish",
+};
+
 const prescriptionRouteMap: Record<string, string> = {
   "Contraceptive Pill, Patch or Ring": "/prescriptions/contraceptive-pill-patch-ring",
   "Period Delay": "/prescriptions/period-delay-treatment",
@@ -114,10 +122,49 @@ const Navbar = () => {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
+  const [visibleConsultationItems, setVisibleConsultationItems] = useState<string[]>([]);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const bookHref = isPatient() ? '/doctors' : getLoginUrl(BOOKING_APPOINTMENTS_PATH, 'book');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVisibleConsultations = async () => {
+      const allItems = Object.values(consultationOptions).flat();
+      const checks = await Promise.all(
+        allItems.map(async (item) => {
+          const slug = consultationSlugMap[item];
+          if (!slug) return { item, visible: true };
+          try {
+            // Public cms endpoint returns published pages only.
+            await cmsApi.getPage(slug);
+            return { item, visible: true };
+          } catch {
+            return { item, visible: false };
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setVisibleConsultationItems(checks.filter((c) => c.visible).map((c) => c.item));
+      }
+    };
+
+    void loadVisibleConsultations();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const consultationOptionsFiltered = useMemo(() => {
+    const items = consultationOptions["GENERAL CONSULTATION"].filter((item) =>
+      visibleConsultationItems.includes(item)
+    );
+
+    return items.length ? { "GENERAL CONSULTATION": items } : {};
+  }, [visibleConsultationItems]);
 
   return (
     <>
@@ -154,7 +201,7 @@ const Navbar = () => {
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-72 z-[60]">
                   <div className="bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3">
                     <div className="flex flex-col gap-1 relative">
-                       {Object.keys(consultationOptions).map((category, idx) => (
+                       {Object.keys(consultationOptionsFiltered).map((category, idx) => (
                         <div 
                           key={idx}
                           onMouseEnter={() => setActiveSubmenu(category)}
@@ -168,7 +215,7 @@ const Navbar = () => {
                           {activeSubmenu === category && (
                             <div className="absolute top-0 left-full ml-3 w-80 bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3 z-[70]">
                                 <div className="flex flex-col gap-1">
-                                  {consultationOptions[category as keyof typeof consultationOptions].map((item, idy) => (
+                                  {(consultationOptionsFiltered[category as keyof typeof consultationOptionsFiltered] ?? []).map((item, idy) => (
                                     <Link 
                                       key={idy}
                                       href={consultationRouteMap[item] ?? "/register"}
@@ -306,11 +353,11 @@ const Navbar = () => {
                    </button>
                    {mobileExpanded === 'consultation' && (
                       <div className="overflow-hidden mt-4">
-                         {Object.keys(consultationOptions).map((cat, i) => (
+                         {Object.keys(consultationOptionsFiltered).map((cat, i) => (
                            <div key={i} className="mb-4">
                               <div className="px-4 py-2 text-[10px] font-black tracking-widest text-primary uppercase">{cat}</div>
                               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden mt-2">
-                                {consultationOptions[cat as keyof typeof consultationOptions].map((item, j) => (
+                                {(consultationOptionsFiltered[cat as keyof typeof consultationOptionsFiltered] ?? []).map((item, j) => (
                                   <Link 
                                     key={j} 
                                     href={consultationRouteMap[item] ?? "/register"}

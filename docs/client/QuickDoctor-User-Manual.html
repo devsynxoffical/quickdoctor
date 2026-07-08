@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>QuickDoctor User Manual</title>
+  <link rel="stylesheet" href="pdf-style.css" />
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    .cover { text-align: center; padding: 80px 20px 40px; page-break-after: always; }
+    .cover h1 { border: none; font-size: 32pt; }
+    .cover .meta { color: #64748b; margin-top: 24px; font-size: 12pt; }
+    .toc { page-break-after: always; }
+    .toc ol { line-height: 1.9; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <h1>QuickDoctor</h1>
+    <p style="font-size:18pt;font-weight:700;color:#334155">Complete User Manual</p>
+    <p class="meta">https://quickdoctor.ie<br>Version 1.0 · July 2026<br><br>Patients · Doctors · Administrators</p>
+  </div>
+
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li>Introduction</li>
+      <li>Getting Started</li>
+      <li>Patient Guide</li>
+      <li>Doctor Guide</li>
+      <li>Administrator Guide</li>
+      <li>Public Website</li>
+      <li>Payments &amp; Pricing</li>
+      <li>Video Consultations</li>
+      <li>Prescriptions</li>
+      <li>Medical Certificates</li>
+      <li>Email Notifications</li>
+      <li>Timezone &amp; Scheduling</li>
+      <li>Refunds &amp; Cancellations</li>
+      <li>Privacy &amp; GDPR</li>
+      <li>Maintenance &amp; CMS</li>
+      <li>Demo Accounts</li>
+      <li>Troubleshooting</li>
+      <li>URL Quick Reference</li>
+    </ol>
+  </div>
+
+  <!-- Content loaded from markdown via build script; placeholder for puppeteer -->
+  <div id="content"></div>
+
+  <script>
+    // Minimal markdown-to-HTML for print (headings, tables, lists)
+    fetch('QuickDoctor-User-Manual.md')
+      .then(r => r.text())
+      .then(md => {
+        const skip = new Set(['Table of Contents', 'QuickDoctor — Complete User Manual']);
+        let html = '';
+        let inTable = false;
+        const lines = md.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+          if (line.startsWith('# ')) continue;
+          if (line.startsWith('## ')) { html += inTable ? '</table>' : ''; inTable=false; html += `<h2 class="page-break">${line.slice(3)}</h2>`; continue; }
+          if (line.startsWith('### ')) { html += `<h3>${line.slice(4)}</h3>`; continue; }
+          if (line.startsWith('#### ')) { html += `<h4>${line.slice(5)}</h4>`; continue; }
+          if (line.startsWith('---')) { html += '<hr>'; continue; }
+          if (line.startsWith('|')) {
+            const cells = line.split('|').filter((c,i,a) => i>0 && i<a.length-1).map(c => c.trim());
+            if (line.includes('---')) continue;
+            if (!inTable) { html += '<table><tr>' + cells.map(c => `<th>${c}</th>`).join('') + '</tr>'; inTable=true; }
+            else { html += '<tr>' + cells.map(c => `<td>${c.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</td>`).join('') + '</tr>'; }
+            continue;
+          } else if (inTable) { html += '</table>'; inTable = false; }
+          if (line.startsWith('- ')) {
+            html += `<li>${line.slice(2).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code>$1</code>')}</li>`;
+            if (!lines[i+1]?.startsWith('- ')) html = html.replace(/(<li>.*<\/li>)$/, '<ul>$1</ul>');
+            continue;
+          }
+          if (/^\d+\.\s/.test(line)) {
+            html += `<li>${line.replace(/^\d+\.\s/,'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</li>`;
+            continue;
+          }
+          if (line.trim() === '') continue;
+          if (line.startsWith('*') && line.endsWith('*')) { html += `<p><em>${line.slice(1,-1)}</em></p>`; continue; }
+          html += `<p>${line.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code>$1</code>').replace(/\[(.*?)\]\((.*?)\)/g,'<a href="$2">$1</a>')}</p>`;
+        }
+        if (inTable) html += '</table>';
+        document.getElementById('content').innerHTML = html;
+      });
+  </script>
+</body>
+</html>
