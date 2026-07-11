@@ -69,7 +69,7 @@ export default function ConsultationLandingPage() {
                 Choose your consultation type
               </h1>
               <p className="mt-4 text-slate-600 dark:text-slate-300 text-lg max-w-3xl mx-auto">
-                This section is fully prepared with working subpages and dummy booking data so you can continue design and content updates quickly.
+                Book a private video consultation with an Irish-registered GP. Choose your preferred doctor or language, pick a time that suits you, and get care from home.
               </p>
             </motion.div>
 
@@ -93,7 +93,7 @@ export default function ConsultationLandingPage() {
                       href={item.href}
                       className="mt-5 inline-flex items-center gap-2 font-black text-primary hover:text-primary/80 transition-colors"
                     >
-                      Go to page <ArrowRight className="w-4 h-4" />
+                      Book consultation <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </motion.div>
