@@ -56,7 +56,7 @@ export const SITE_PAGE_REGISTRY: SitePageDef[] = [
   { slug: 'home', path: '/', title: 'Home', group: 'Main' },
   { slug: 'contact', path: '/contact', title: 'Contact', group: 'Main' },
   { slug: 'help', path: '/help', title: 'Help & Support', group: 'Main' },
-  { slug: 'doctors', path: '/doctors', title: 'Find a Doctor', group: 'Main' },
+  { slug: 'doctors', path: '/book', title: 'Book consultation', group: 'Main' },
   { slug: 'medical-certificates', path: '/medical-certificates', title: 'Medical Certificates', group: 'Main' },
   { slug: 'consultation', path: '/consultation', title: 'Video Consultation', group: 'Main' },
   { slug: 'blog', path: '/blog', title: 'Blog', group: 'Main' },

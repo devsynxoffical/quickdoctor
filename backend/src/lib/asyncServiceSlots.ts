@@ -8,21 +8,33 @@ export type ServiceCapability =
   | 'MEDICAL_CERTIFICATE'
   | 'PRESCRIPTION_REVIEW';
 
-const CAPABILITY_FIELD: Record<
-  ServiceCapability,
-  'offersVideoConsultation' | 'offersMedicalCertificate' | 'offersPrescriptionReview'
-> = {
-  VIDEO_CONSULTATION: 'offersVideoConsultation',
-  MEDICAL_CERTIFICATE: 'offersMedicalCertificate',
-  PRESCRIPTION_REVIEW: 'offersPrescriptionReview',
-};
-
+/**
+ * Doctor categories for auto-assignment:
+ * - General Physician (`offersVideoConsultation`): consultations + any booking type
+ * - Prescriber (`offersPrescriptionReview`): prescription bookings
+ * - Certificate issuer (`offersMedicalCertificate`): certificate bookings
+ */
 function capableDoctorWhere(capability: ServiceCapability): Prisma.DoctorWhereInput {
-  return {
+  const base: Prisma.DoctorWhereInput = {
     status: 'APPROVED',
     profileComplete: true,
     user: { isActive: true },
-    [CAPABILITY_FIELD[capability]]: true,
+  };
+
+  if (capability === 'VIDEO_CONSULTATION') {
+    return { ...base, offersVideoConsultation: true };
+  }
+
+  if (capability === 'MEDICAL_CERTIFICATE') {
+    return {
+      ...base,
+      OR: [{ offersMedicalCertificate: true }, { offersVideoConsultation: true }],
+    };
+  }
+
+  return {
+    ...base,
+    OR: [{ offersPrescriptionReview: true }, { offersVideoConsultation: true }],
   };
 }
 

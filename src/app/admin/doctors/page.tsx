@@ -154,9 +154,9 @@ export default function AdminDoctorsPage() {
                   <td className="p-4">{d.specialization}</td>
                   <td className="p-4 text-xs text-slate-500">
                     {[
-                      d.offersVideoConsultation !== false ? 'Consult' : null,
-                      d.offersPrescriptionReview !== false ? 'Rx' : null,
-                      d.offersMedicalCertificate !== false ? 'Cert' : null,
+                      d.offersVideoConsultation !== false ? 'GP' : null,
+                      d.offersPrescriptionReview ? 'Prescriber' : null,
+                      d.offersMedicalCertificate ? 'Cert' : null,
                     ]
                       .filter(Boolean)
                       .join(' · ') || '—'}
@@ -279,6 +279,10 @@ export default function AdminDoctorsPage() {
             </label>
             <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
               <p className="text-[10px] font-black uppercase text-slate-400">Assignment categories</p>
+              <p className="text-xs text-slate-500">
+                General Physicians can receive any booking. Prescribers and certificate issuers only receive that
+                service type when auto-assign is on.
+              </p>
               <label className="flex items-center gap-3 text-sm font-bold">
                 <input
                   type="checkbox"
@@ -286,7 +290,7 @@ export default function AdminDoctorsPage() {
                   onChange={(e) => setForm((f) => ({ ...f, offersVideoConsultation: e.target.checked }))}
                   className="w-4 h-4 accent-primary"
                 />
-                Consultation doctor
+                General Physician (consultations + all booking types)
               </label>
               <label className="flex items-center gap-3 text-sm font-bold">
                 <input
@@ -295,7 +299,7 @@ export default function AdminDoctorsPage() {
                   onChange={(e) => setForm((f) => ({ ...f, offersPrescriptionReview: e.target.checked }))}
                   className="w-4 h-4 accent-primary"
                 />
-                Prescription / prescriber
+                Prescriber (prescription bookings)
               </label>
               <label className="flex items-center gap-3 text-sm font-bold">
                 <input
@@ -304,7 +308,7 @@ export default function AdminDoctorsPage() {
                   onChange={(e) => setForm((f) => ({ ...f, offersMedicalCertificate: e.target.checked }))}
                   className="w-4 h-4 accent-primary"
                 />
-                Certificate issuing doctor
+                Certificate issuer (certificate bookings)
               </label>
             </div>
             {error && <p className="text-sm text-red-600 font-bold">{error}</p>}

@@ -200,7 +200,7 @@ export function getTemplateSections(def: SitePageDef): SectionTemplate[] {
       contentJson: {
         text: 'Ready to speak with a doctor?',
         subtext: '',
-        label: 'Find a doctor',
+        label: 'Book consultation',
         href: '/book',
       },
     },

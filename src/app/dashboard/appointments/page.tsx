@@ -335,7 +335,7 @@ function AppointmentsContent() {
                     {appt.status === 'PENDING_PAYMENT' && (
                       <>
                         <Link
-                          href={`/doctors/${appt.doctor?.id || ''}`}
+                          href="/book"
                           className="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest"
                         >
                           Complete booking
@@ -400,7 +400,7 @@ function AppointmentsContent() {
                 href="/book"
                 className="inline-block px-8 py-4 bg-primary text-white rounded-2xl font-bold medical-shadow"
               >
-                Find a doctor
+                Book consultation
               </Link>
             </div>
           )}

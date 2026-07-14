@@ -248,7 +248,7 @@ export default function PatientDashboardOverview() {
                   href="/book"
                   className="px-6 py-3 bg-primary text-white rounded-xl text-sm font-black"
                 >
-                  Find a doctor
+                  Book consultation
                 </Link>
               </div>
             )}

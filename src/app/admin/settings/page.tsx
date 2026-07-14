@@ -128,8 +128,9 @@ export default function AdminSettingsPage() {
           <div>
             <p className="font-black">Doctor assignment</p>
             <p className="text-sm text-slate-500">
-              Auto assigns bookings to available doctors by category (consultation / prescription / certificate). Manual
-              flags bookings for admin reassignment.
+              Auto assigns by category: certificate → issuers (+ GPs), prescription → prescribers (+ GPs), consultation →
+              General Physicians. Manual flags bookings for you to assign in Appointments. Double-booking the same slot is
+              blocked.
             </p>
           </div>
         </div>
@@ -199,7 +200,7 @@ export default function AdminSettingsPage() {
               <input
                 value={announcement.linkHref}
                 onChange={(e) => setAnnouncement((a) => ({ ...a, linkHref: e.target.value }))}
-                placeholder="Optional link (e.g. /doctors)"
+                placeholder="Optional link (e.g. /book)"
                 className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
               />
               <input

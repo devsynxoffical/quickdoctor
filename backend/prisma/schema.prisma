@@ -152,10 +152,10 @@ model Doctor {
   consultationFeeCents Int           @default(4900)
   currency             String        @default("EUR")
   profileComplete      Boolean       @default(false)
-  /// Category flags for auto-assignment of bookings
-  offersVideoConsultation   Boolean @default(true)
-  offersPrescriptionReview  Boolean @default(false)
-  offersMedicalCertificate  Boolean @default(false)
+  /// Assignment categories: GP (all types), prescriber, certificate issuer
+  offersVideoConsultation   Boolean @default(true)  // General Physician — consultations + fallback for all
+  offersPrescriptionReview  Boolean @default(false) // Prescriber
+  offersMedicalCertificate  Boolean @default(false) // Certificate issuer
 
   appointments Appointment[]
   availability DoctorAvailability[]

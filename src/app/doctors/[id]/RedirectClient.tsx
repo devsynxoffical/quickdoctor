@@ -3,8 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-/** Legacy per-doctor book URL — redirect to category booking. */
-export default function DoctorBookRedirectPage() {
+export default function DoctorsIdRedirectClient() {
   const router = useRouter();
 
   useEffect(() => {
