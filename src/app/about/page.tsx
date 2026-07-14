@@ -1,7 +1,20 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CalendarClock, FileText, Lock, Pill, Stethoscope, UserCheck, Video } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  CalendarClock,
+  Download,
+  FileText,
+  Lock,
+  Pill,
+  Smartphone,
+  Stethoscope,
+  UserCheck,
+  Video,
+} from "lucide-react";
+import { SITE_APK_FILENAME, SITE_APK_HREF } from "@/lib/siteContact";
 
 const highlights = [
   {
@@ -79,17 +92,19 @@ export default function AboutPage() {
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
-                  href="/register"
+                  href="/book"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-black hover:bg-primary-dark transition-colors"
                 >
                   Book an Appointment <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link
-                  href="/consultation"
+                <a
+                  href={SITE_APK_HREF}
+                  download={SITE_APK_FILENAME}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-300 text-slate-800 font-black hover:bg-slate-100 transition-colors"
                 >
-                  Explore Services
-                </Link>
+                  <Download className="w-4 h-4" />
+                  Download Android APK
+                </a>
               </div>
             </div>
 
@@ -150,6 +165,31 @@ export default function AboutPage() {
         </section>
 
         <section className="px-4 sm:px-6 pb-8">
+          <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200 bg-white p-8 sm:p-10">
+            <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Smartphone className="w-7 h-7" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl md:text-3xl font-black text-primary">Get the Android app</h2>
+                <p className="mt-2 text-slate-600 text-sm md:text-base max-w-2xl">
+                  Download the QuickDoctor APK for Android to book consultations, manage appointments, and stay updated on
+                  the go. Install from a trusted device — you may need to allow installs from unknown sources.
+                </p>
+              </div>
+              <a
+                href={SITE_APK_HREF}
+                download={SITE_APK_FILENAME}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-primary text-white font-black hover:bg-primary-dark transition-colors shrink-0"
+              >
+                <Download className="w-4 h-4" />
+                Download APK
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 sm:px-6 pb-8">
           <div className="max-w-5xl mx-auto rounded-3xl bg-gradient-to-br from-primary to-blue-900 text-white p-8 sm:p-12 text-center">
             <Stethoscope className="w-9 h-9 mx-auto text-blue-100" />
             <h2 className="mt-4 text-3xl md:text-4xl font-black">Ready to get started?</h2>
@@ -157,7 +197,7 @@ export default function AboutPage() {
               Join patients across Ireland who trust QuickDoctor for convenient, professional, and secure digital care.
             </p>
             <Link
-              href="/register"
+              href="/book"
               className="inline-flex mt-7 px-8 py-3 rounded-xl bg-white text-primary font-black hover:bg-blue-50 transition-colors"
             >
               Book Your Appointment

@@ -7,3 +7,7 @@ export const SITE_DOMAIN = 'quickdoctor.ie';
 export const SITE_COMPANY_NAME = 'QuickDoctor Medical Services ltd';
 export const SITE_COMPANY_REG = '817120';
 export const SITE_ADDRESS = 'Limerick, Ireland';
+
+/** Public path for the Android APK (place file at public/quickdoctor.apk). */
+export const SITE_APK_HREF = '/quickdoctor.apk';
+export const SITE_APK_FILENAME = 'quickdoctor.apk';
