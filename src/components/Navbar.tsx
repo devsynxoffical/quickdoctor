@@ -200,8 +200,8 @@ const Navbar = () => {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm">
-        <div className="max-w-7xl mx-auto h-[4.25rem] px-4 sm:px-6 flex items-center gap-4 lg:gap-6">
-          <Logo size="md" showText={false} className="shrink-0" />
+        <div className="max-w-7xl mx-auto h-[4.75rem] px-4 sm:px-6 flex items-center gap-4 lg:gap-6">
+          <Logo size="lg" showText={false} className="shrink-0" />
 
           {/* Desktop nav */}
           <div className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2 min-w-0">

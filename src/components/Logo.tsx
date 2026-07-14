@@ -12,10 +12,10 @@ type LogoProps = {
 };
 
 const sizes = {
-  sm: { icon: 32, text: 'text-lg' },
-  md: { icon: 40, text: 'text-xl sm:text-2xl' },
-  lg: { icon: 56, text: 'text-2xl sm:text-3xl' },
-  xl: { icon: 72, text: 'text-3xl' },
+  sm: { icon: 44, text: 'text-lg' },
+  md: { icon: 56, text: 'text-xl sm:text-2xl' },
+  lg: { icon: 72, text: 'text-2xl sm:text-3xl' },
+  xl: { icon: 96, text: 'text-3xl' },
 };
 
 export default function Logo({
@@ -29,7 +29,7 @@ export default function Logo({
   const content = (
     <span className={`inline-flex items-center gap-2.5 group ${className}`}>
       <Image
-        src="/logo.svg"
+        src="/logo.png"
         alt="QuickDoctor"
         width={s.icon}
         height={s.icon}
