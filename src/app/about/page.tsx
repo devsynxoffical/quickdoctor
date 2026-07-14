@@ -1,3 +1,5 @@
+"use client";
+
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -14,7 +16,6 @@ import {
   UserCheck,
   Video,
 } from "lucide-react";
-import { SITE_APK_FILENAME, SITE_APK_HREF } from "@/lib/siteContact";
 
 const highlights = [
   {
@@ -98,8 +99,8 @@ export default function AboutPage() {
                   Book an Appointment <ArrowRight className="w-4 h-4" />
                 </Link>
                 <a
-                  href={SITE_APK_HREF}
-                  download={SITE_APK_FILENAME}
+                  href="/downloads/quickdoctor.apk"
+                  download="QuickDoctor.apk"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-300 text-slate-800 font-black hover:bg-slate-100 transition-colors"
                 >
                   <Download className="w-4 h-4" />
@@ -128,6 +129,44 @@ export default function AboutPage() {
         </section>
 
         <section className="px-4 sm:px-6 py-14 bg-white border-y border-slate-200">
+          <div className="max-w-7xl mx-auto grid lg:grid-cols-[1.2fr_0.8fr] gap-8 items-center">
+            <div>
+              <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary">
+                <Smartphone className="w-4 h-4" />
+                Android app
+              </p>
+              <h2 className="mt-3 text-3xl md:text-4xl font-black text-primary">Get QuickDoctor on your phone</h2>
+              <p className="mt-4 text-slate-600 max-w-2xl">
+                Download our Android app package (APK). It opens the live QuickDoctor website in a dedicated app window —
+                same booking, prescriptions, and certificates flow as the site.
+              </p>
+              <ul className="mt-5 space-y-2 text-sm text-slate-600">
+                <li>• Install from your browser (allow “Install unknown apps” if Android asks).</li>
+                <li>• Uses https://quickdoctor.ie — always up to date with the website.</li>
+                <li>• No separate Play Store account required for this sideload APK.</li>
+              </ul>
+              <a
+                href="/downloads/quickdoctor.apk"
+                download="QuickDoctor.apk"
+                className="mt-7 inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-primary text-white font-black hover:bg-primary/90 transition-colors"
+              >
+                <Download className="w-5 h-5" />
+                Download QuickDoctor.apk
+              </a>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center">
+              <div className="mx-auto w-20 h-20 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+                <Smartphone className="w-10 h-10 text-primary" />
+              </div>
+              <p className="mt-5 font-black text-lg text-slate-900">Web-based Android app</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Website wrapped as an installable APK for homescreen access and full-screen use.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 sm:px-6 py-14 bg-slate-50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-black text-primary text-center">Our Core Services</h2>
             <p className="text-slate-600 text-center mt-3 max-w-2xl mx-auto">
@@ -135,7 +174,7 @@ export default function AboutPage() {
             </p>
             <div className="mt-10 grid md:grid-cols-3 gap-6">
               {services.map((service) => (
-                <div key={service.title} className="rounded-2xl border border-slate-200 p-6 bg-slate-50">
+                <div key={service.title} className="rounded-2xl border border-slate-200 p-6 bg-white">
                   <div className="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center">
                     <service.icon className="w-5 h-5 text-primary" />
                   </div>
@@ -165,43 +204,28 @@ export default function AboutPage() {
         </section>
 
         <section className="px-4 sm:px-6 pb-8">
-          <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200 bg-white p-8 sm:p-10">
-            <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Smartphone className="w-7 h-7" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl md:text-3xl font-black text-primary">Get the Android app</h2>
-                <p className="mt-2 text-slate-600 text-sm md:text-base max-w-2xl">
-                  Download the QuickDoctor APK for Android to book consultations, manage appointments, and stay updated on
-                  the go. Install from a trusted device — you may need to allow installs from unknown sources.
-                </p>
-              </div>
-              <a
-                href={SITE_APK_HREF}
-                download={SITE_APK_FILENAME}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-primary text-white font-black hover:bg-primary-dark transition-colors shrink-0"
-              >
-                <Download className="w-4 h-4" />
-                Download APK
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-4 sm:px-6 pb-8">
           <div className="max-w-5xl mx-auto rounded-3xl bg-gradient-to-br from-primary to-blue-900 text-white p-8 sm:p-12 text-center">
             <Stethoscope className="w-9 h-9 mx-auto text-blue-100" />
             <h2 className="mt-4 text-3xl md:text-4xl font-black">Ready to get started?</h2>
             <p className="mt-3 text-blue-100 max-w-2xl mx-auto">
               Join patients across Ireland who trust QuickDoctor for convenient, professional, and secure digital care.
             </p>
-            <Link
-              href="/book"
-              className="inline-flex mt-7 px-8 py-3 rounded-xl bg-white text-primary font-black hover:bg-blue-50 transition-colors"
-            >
-              Book Your Appointment
-            </Link>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/book"
+                className="inline-flex px-8 py-3 rounded-xl bg-white text-primary font-black hover:bg-blue-50 transition-colors"
+              >
+                Book Your Appointment
+              </Link>
+              <a
+                href="/downloads/quickdoctor.apk"
+                download="QuickDoctor.apk"
+                className="inline-flex items-center gap-2 px-8 py-3 rounded-xl border border-white/40 text-white font-black hover:bg-white/10 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download APK
+              </a>
+            </div>
           </div>
         </section>
       </main>

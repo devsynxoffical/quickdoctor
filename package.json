@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:static": "next build",
+    "build:apk": "bash scripts/build-apk.sh",
     "start": "next start",
     "lint": "eslint"
   },

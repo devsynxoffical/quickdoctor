@@ -56,3 +56,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android signing keys (keep local)
+*.jks
+*.keystore
+android-webview/local.properties
+
