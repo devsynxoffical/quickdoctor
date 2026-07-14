@@ -320,6 +320,8 @@ function ConsultationRoomContent() {
                       onClick={() =>
                         downloadPrescriptionPdf(appointment.prescription!, {
                           patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+                          patient: appointment.patient,
+                          doctor: appointment.doctor,
                         })
                       }
                       className="inline-flex items-center gap-1 text-xs font-bold text-primary"
@@ -333,6 +335,8 @@ function ConsultationRoomContent() {
                       onClick={() =>
                         downloadMedicalCertificatePdf(appointment.certificate!, {
                           patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+                          patient: appointment.patient,
+                          doctor: appointment.doctor,
                         })
                       }
                       className="inline-flex items-center gap-1 text-xs font-bold text-primary"
@@ -573,8 +577,15 @@ type AppointmentDetail = {
   serviceType?: 'VIDEO_CONSULTATION' | 'MEDICAL_CERTIFICATE' | 'PRESCRIPTION_REVIEW';
   serviceName?: string | null;
   requestPayload?: Record<string, unknown> | null;
-  patient: { firstName: string; lastName: string; dob: string; gender?: string };
-  doctor?: { firstName: string; lastName: string };
+  patient: {
+    firstName: string;
+    lastName: string;
+    dob: string;
+    gender?: string;
+    address?: string | null;
+    phone?: string | null;
+  };
+  doctor?: { firstName: string; lastName: string; licenseNumber?: string };
   prescription?: PrescriptionRow | null;
   certificate?: MedicalCertificateRow | null;
 };

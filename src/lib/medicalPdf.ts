@@ -1,13 +1,35 @@
 import { jsPDF } from 'jspdf';
 import type { PrescriptionRow, MedicalCertificateRow } from '@/lib/api';
-import { formatAppDateLong, formatAppDateTime } from '@/lib/appTime';
-import { formatDoctorName } from '@/lib/format';
+import { SITE_EMAIL, SITE_PHONE, SITE_DOMAIN } from '@/lib/siteContact';
 import { itemsFromPrescription, type PrescriptionItem } from '@/lib/prescriptionItems';
-import { SITE_EMAIL, SITE_DOMAIN } from '@/lib/siteContact';
 
-const PRIMARY = { r: 37, g: 99, b: 235 };
+/** Teal accents matching client sample PDFs */
+const TEAL = { r: 13, g: 148, b: 136 };
 const SLATE = { r: 15, g: 23, b: 42 };
 const MUTED = { r: 100, g: 116, b: 139 };
+const LINE = { r: 203, g: 213, b: 225 };
+const BOX_BG = { r: 248, g: 250, b: 252 };
+
+const MARGIN = 14;
+const PAGE_W = 210;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+const PAGE_BOTTOM = 282;
+
+type DateInput = Date | string | number;
+
+type PatientInfo = {
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  address?: string | null;
+  phone?: string | null;
+};
+
+type DoctorInfo = {
+  firstName?: string;
+  lastName?: string;
+  licenseNumber?: string;
+};
 
 let cachedLogoDataUrl: string | null | undefined;
 
@@ -33,6 +55,25 @@ async function loadLogoDataUrl(): Promise<string | null> {
   }
 }
 
+function toDate(value: DateInput): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === 'number') return new Date(value);
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+    return new Date(`${s}Z`);
+  }
+  return new Date(s);
+}
+
+/** DD/MM/YYYY for Irish medical documents */
+function formatDocDate(value: DateInput): string {
+  const d = toDate(value);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 function savePdf(doc: jsPDF, filename: string) {
   const safe = filename.replace(/[^a-z0-9._-]/gi, '-').toLowerCase();
   try {
@@ -50,71 +91,27 @@ function savePdf(doc: jsPDF, filename: string) {
   }
 }
 
-function refId(id: string) {
-  return `QD-${id.replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+/** Stable RX-/SC- style reference from UUID */
+function documentReference(prefix: 'RX' | 'SC', id: string): string {
+  const hex = id.replace(/-/g, '').slice(-6);
+  const n = Number.parseInt(hex, 16) % 1_000_000;
+  return `${prefix}-${String(n).padStart(6, '0')}`;
 }
 
-function addBrandHeader(doc: jsPDF, title: string, subtitle: string, logoDataUrl: string | null) {
-  doc.setFillColor(PRIMARY.r, PRIMARY.g, PRIMARY.b);
-  doc.rect(0, 0, 210, 28, 'F');
-
-  if (logoDataUrl) {
-    try {
-      doc.addImage(logoDataUrl, 'PNG', 14, 5, 16, 16);
-    } catch {
-      /* ignore logo draw errors */
-    }
-  }
-
-  const textX = logoDataUrl ? 34 : 14;
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(title, textX, 12);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(subtitle, textX, 18);
-  doc.setFontSize(7.5);
-  doc.text(`${SITE_DOMAIN}  •  ${SITE_EMAIL}`, textX, 24);
+function doctorDisplayName(doctor?: DoctorInfo | null): string {
+  if (!doctor) return 'Dr';
+  const parts = [doctor.firstName, doctor.lastName].filter(Boolean);
+  return parts.length ? `Dr ${parts.join(' ')}` : 'Dr';
 }
 
-function addFooter(doc: jsPDF, lines: string[]) {
-  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  let y = 285;
-  for (const line of lines) {
-    doc.text(line, 14, y);
-    y += 3.5;
-  }
+function doctorSurname(doctor?: DoctorInfo | null): string {
+  if (!doctor) return 'Doctor';
+  return [doctor.firstName, doctor.lastName].filter(Boolean).join(' ') || 'Doctor';
 }
 
-function addSignatureBlock(doc: jsPDF, doctorName: string, issuedAt: string, y: number) {
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.3);
-  doc.line(14, y, 90, y);
-  doc.line(110, y, 196, y);
-  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Prescribing doctor', 14, y + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.text(doctorName, 14, y + 10);
-  doc.text(`Date: ${issuedAt}`, 14, y + 15);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Digital verification', 110, y + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Contact ${SITE_EMAIL}`, 110, y + 10);
-  doc.text('(Reference on document)', 110, y + 15);
-}
-
-function patientNameFromRow(
-  row: { appointment?: { patient?: { firstName?: string; lastName?: string } } },
-  fallback?: string
-) {
-  const p = row.appointment?.patient;
-  if (p?.firstName || p?.lastName) {
-    return [p.firstName, p.lastName].filter(Boolean).join(' ');
+function patientFullName(patient?: PatientInfo | null, fallback?: string): string {
+  if (patient?.firstName || patient?.lastName) {
+    return [patient.firstName, patient.lastName].filter(Boolean).join(' ');
   }
   return fallback || 'Patient';
 }
@@ -132,96 +129,267 @@ export function getStoredPatientName(): string {
   }
 }
 
+function drawPlatformHeader(doc: jsPDF, logoDataUrl: string | null): number {
+  const top = 10;
+
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, 'PNG', MARGIN, top, 14, 14);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const leftX = logoDataUrl ? MARGIN + 18 : MARGIN;
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('QuickDoctor.ie', leftX, top + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  doc.text('Online GP Consultation Service', leftX, top + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  const rightLines = [
+    'QuickDoctor.ie',
+    `www.${SITE_DOMAIN}`,
+    SITE_EMAIL,
+    SITE_PHONE,
+  ];
+  rightLines.forEach((line, i) => {
+    doc.text(line, PAGE_W - MARGIN, top + 4 + i * 4, { align: 'right' });
+  });
+
+  const dividerY = top + 20;
+  doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+  doc.setLineWidth(0.4);
+  doc.line(MARGIN, dividerY, PAGE_W - MARGIN, dividerY);
+
+  return dividerY + 8;
+}
+
+/** Title centered with reference number box on the right (per client arrow). */
+function drawTitleWithReference(
+  doc: jsPDF,
+  y: number,
+  title: string,
+  reference: string
+): number {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(TEAL.r, TEAL.g, TEAL.b);
+  doc.text(title, PAGE_W / 2, y, { align: 'center' });
+
+  const boxW = 38;
+  const boxH = 12;
+  const boxX = PAGE_W - MARGIN - boxW;
+  const boxY = y - 8;
+  doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+  doc.setFillColor(BOX_BG.r, BOX_BG.g, BOX_BG.b);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  doc.text('Reference', boxX + boxW / 2, boxY + 4.5, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  doc.text(reference, boxX + boxW / 2, boxY + 9.5, { align: 'center' });
+
+  return y + 8;
+}
+
+function drawSectionHeading(doc: jsPDF, y: number, label: string): number {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(TEAL.r, TEAL.g, TEAL.b);
+  doc.text(label, MARGIN, y);
+  return y + 5;
+}
+
+function drawLabeledLine(
+  doc: jsPDF,
+  y: number,
+  label: string,
+  value: string,
+  options?: { labelWidth?: number; maxWidth?: number }
+): number {
+  const labelW = options?.labelWidth ?? 42;
+  const maxW = options?.maxWidth ?? CONTENT_W - labelW;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  doc.text(label, MARGIN, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  const lines = doc.splitTextToSize(value || '—', maxW);
+  doc.text(lines, MARGIN + labelW, y);
+  return y + Math.max(5, lines.length * 4.2);
+}
+
+function drawWrappedBody(doc: jsPDF, y: number, text: string, fontSize = 9): number {
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fontSize);
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  const lines = doc.splitTextToSize(text, CONTENT_W);
+  doc.text(lines, MARGIN, y);
+  return y + lines.length * (fontSize * 0.4 + 1.2);
+}
+
+function drawDoctorFooterBlock(
+  doc: jsPDF,
+  y: number,
+  doctor: DoctorInfo | null | undefined,
+  issueDate: string
+): number {
+  y = drawSectionHeading(doc, y, 'Doctor Details');
+
+  y = drawLabeledLine(doc, y, 'Doctor Name:', doctorSurname(doctor));
+  y = drawLabeledLine(
+    doc,
+    y,
+    'Irish Medical Council Registration No.:',
+    doctor?.licenseNumber || '—',
+    { labelWidth: 78 }
+  );
+
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  doc.text('Date of Issue', MARGIN, y);
+  doc.text('Doctor Signature', 110, y);
+  y += 2;
+  doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+  doc.setLineWidth(0.35);
+  doc.line(MARGIN, y, 90, y);
+  doc.line(110, y, PAGE_W - MARGIN, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  doc.text(issueDate, MARGIN + 20, y, { align: 'center' });
+  doc.text(doctorSurname(doctor), 153, y, { align: 'center' });
+  y += 4;
+  doc.setFontSize(8);
+  doc.text(`Irish MCRN: ${doctor?.licenseNumber || '—'}`, 153, y, { align: 'center' });
+  return y + 6;
+}
+
+function drawPageFooter(doc: jsPDF, lines: string[]) {
+  doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, PAGE_BOTTOM - 8, PAGE_W - MARGIN, PAGE_BOTTOM - 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  let y = PAGE_BOTTOM - 4;
+  for (const line of lines) {
+    const wrapped = doc.splitTextToSize(line, CONTENT_W);
+    doc.text(wrapped, PAGE_W / 2, y, { align: 'center' });
+    y += wrapped.length * 3.2;
+  }
+}
+
 export async function downloadPrescriptionPdf(
   item: PrescriptionRow,
-  options?: { patientName?: string }
+  options?: {
+    patientName?: string;
+    patient?: PatientInfo;
+    doctor?: DoctorInfo;
+  }
 ) {
   const logo = await loadLogoDataUrl();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const doctor = formatDoctorName(item.appointment?.doctor);
-  const patient = options?.patientName || patientNameFromRow(item, getStoredPatientName());
-  const issuedStr = formatAppDateLong(item.issuedAt);
-  const items = itemsFromPrescription(item);
-  const reference = refId(item.id);
+  const patient = options?.patient || (item.appointment?.patient as PatientInfo | undefined);
+  const doctor = options?.doctor || (item.appointment?.doctor as DoctorInfo | undefined);
+  const patientName = options?.patientName || patientFullName(patient, getStoredPatientName());
+  const issuedStr = formatDocDate(item.issuedAt);
+  const reference = documentReference('RX', item.id);
+  const medicines = itemsFromPrescription(item);
 
-  addBrandHeader(doc, 'PRESCRIPTION', 'QuickDoctor — Digital Prescription', logo);
-
-  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('Prescription details', 14, 38);
+  let y = drawPlatformHeader(doc, logo);
+  y = drawTitleWithReference(doc, y, 'MEDICAL PRESCRIPTION', reference);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.text(`Reference: ${reference}`, 14, 44);
-  doc.text(`Issued: ${issuedStr}`, 110, 44);
-  doc.text(`Patient: ${patient}`, 14, 50);
-  doc.text(`Prescriber: ${doctor}`, 110, 50);
+  doc.setFontSize(9);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  doc.text(`Issue Date: ${issuedStr}`, PAGE_W / 2, y, { align: 'center' });
+  y += 8;
 
+  y = drawSectionHeading(doc, y, 'Patient Details');
+  y = drawLabeledLine(doc, y, 'Patient Name:', patientName);
+  y = drawLabeledLine(doc, y, 'Date of Birth:', patient?.dob ? formatDocDate(patient.dob) : '—');
+  y = drawLabeledLine(doc, y, 'Address:', patient?.address?.trim() || '—');
+  y += 3;
+
+  y = drawSectionHeading(doc, y, 'Prescription');
+
+  const colX = { med: MARGIN, dose: 68, freq: 108, dur: 148 };
+  doc.setFillColor(TEAL.r, TEAL.g, TEAL.b);
+  doc.rect(MARGIN, y - 4, CONTENT_W, 7, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(PRIMARY.r, PRIMARY.g, PRIMARY.b);
-  doc.text('Rx', 14, 60);
-
-  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  const colX = { med: 14, dose: 70, freq: 110, dur: 152 };
-  let y = 68;
-  doc.setFillColor(241, 245, 249);
-  doc.rect(12, y - 5, 186, 7, 'F');
-  doc.text('Medicine', colX.med, y);
+  doc.text('Medicine', colX.med + 1, y);
   doc.text('Dosage', colX.dose, y);
   doc.text('Frequency', colX.freq, y);
   doc.text('Duration', colX.dur, y);
-  y += 7;
+  y += 6;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-
-  const renderItem = (med: PrescriptionItem, index: number) => {
-    if (y > 230) return;
+  const renderMed = (med: PrescriptionItem, index: number) => {
+    if (y > 210) return;
     if (index % 2 === 0) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(12, y - 3.5, 186, med.instructions ? 12 : 8, 'F');
+      doc.setFillColor(BOX_BG.r, BOX_BG.g, BOX_BG.b);
+      doc.rect(MARGIN, y - 3.5, CONTENT_W, med.instructions ? 11 : 7.5, 'F');
     }
     doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
-    doc.text(doc.splitTextToSize(med.name, 52), colX.med, y);
-    doc.text(doc.splitTextToSize(med.dosage, 36), colX.dose, y);
-    doc.text(med.frequency || '—', colX.freq, y);
-    doc.text(med.duration || '—', colX.dur, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(doc.splitTextToSize(med.name || '—', 48), colX.med + 1, y);
+    doc.text(doc.splitTextToSize(med.dosage || '—', 36), colX.dose, y);
+    doc.text(doc.splitTextToSize(med.frequency || '—', 36), colX.freq, y);
+    doc.text(doc.splitTextToSize(med.duration || '—', 40), colX.dur, y);
     y += 5;
     if (med.instructions) {
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-      doc.text(`Note: ${med.instructions}`, colX.med, y);
-      doc.setFontSize(8.5);
+      doc.text(`Instructions: ${med.instructions}`, colX.med + 1, y);
       y += 4;
     }
-    y += 3;
+    y += 2;
   };
 
-  items.forEach(renderItem);
+  const rows = medicines.length ? medicines : [{ name: item.medications, dosage: item.dosage } as PrescriptionItem];
+  rows.slice(0, 8).forEach(renderMed);
 
-  if (item.instructions && y < 235) {
-    y += 2;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
-    doc.text('General instructions', 14, y);
-    y += 5;
-    doc.setFont('helvetica', 'normal');
-    const wrapped = doc.splitTextToSize(item.instructions, 182);
-    doc.text(wrapped, 14, y);
-    y += wrapped.length * 4 + 2;
+  // Pad empty medicine rows so the table looks like the template
+  const shown = Math.min(rows.length, 8);
+  for (let i = shown; i < Math.max(3, shown); i++) {
+    if (y > 210) break;
+    doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, y + 1, PAGE_W - MARGIN, y + 1);
+    y += 7;
   }
 
-  const sigY = Math.min(Math.max(y + 8, 245), 260);
-  addSignatureBlock(doc, doctor, issuedStr, sigY);
+  y += 2;
+  if (item.instructions && y < 225) {
+    y = drawSectionHeading(doc, y, 'Clinical Notes (Optional)');
+    y = drawWrappedBody(doc, y, item.instructions, 8.5);
+    y += 2;
+  }
 
-  addFooter(doc, [
-    'Digitally generated after a QuickDoctor telemedicine consultation. Present to your pharmacy. Emergencies: 112 / 999.',
-    `Document ID: ${reference}  •  Generated ${formatAppDateTime(new Date())}  •  ${SITE_EMAIL}`,
+  y = Math.max(y + 2, 228);
+  if (y > 240) y = 228;
+  drawDoctorFooterBlock(doc, y, doctor, issuedStr);
+
+  drawPageFooter(doc, [
+    'This prescription was issued following an online medical consultation with a doctor registered with the Irish Medical Council.',
+    `QuickDoctor.ie  •  ${SITE_EMAIL}  •  ${SITE_PHONE}`,
   ]);
 
   savePdf(doc, `prescription-${reference}.pdf`);
@@ -229,69 +397,87 @@ export async function downloadPrescriptionPdf(
 
 export async function downloadMedicalCertificatePdf(
   item: MedicalCertificateRow,
-  options?: { patientName?: string }
+  options?: {
+    patientName?: string;
+    patient?: PatientInfo;
+    doctor?: DoctorInfo;
+  }
 ) {
   const logo = await loadLogoDataUrl();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const doctor = formatDoctorName(item.appointment?.doctor);
-  const patient = options?.patientName || patientNameFromRow(item, getStoredPatientName());
-  const issuedStr = formatAppDateLong(item.issuedAt);
-  const fromStr = formatAppDateLong(item.startDate);
-  const toStr = formatAppDateLong(item.endDate);
-  const reference = refId(item.id);
+  const patient = options?.patient || (item.appointment?.patient as PatientInfo | undefined);
+  const doctor = options?.doctor || (item.appointment?.doctor as DoctorInfo | undefined);
+  const patientName = options?.patientName || patientFullName(patient, getStoredPatientName());
+  const doctorName = doctorDisplayName(doctor);
+  const issuedStr = formatDocDate(item.issuedAt);
+  const fromStr = formatDocDate(item.startDate);
+  const toStr = formatDocDate(item.endDate);
+  const reference = documentReference('SC', item.id);
 
-  addBrandHeader(doc, 'MEDICAL CERTIFICATE', 'QuickDoctor — Sick Certificate / Fit Note', logo);
+  let y = drawPlatformHeader(doc, logo);
+  y = drawTitleWithReference(doc, y, 'MEDICAL CERTIFICATE', reference);
 
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  doc.text(`Issue Date: ${issuedStr}`, PAGE_W / 2, y, { align: 'center' });
+  y += 8;
+
+  y = drawSectionHeading(doc, y, 'Patient Details');
+  y = drawLabeledLine(doc, y, 'Patient Name:', patientName);
+  y = drawLabeledLine(doc, y, 'Date of Birth:', patient?.dob ? formatDocDate(patient.dob) : '—');
+  y = drawLabeledLine(doc, y, 'Address:', patient?.address?.trim() || '—');
+  y += 4;
+
+  y = drawSectionHeading(doc, y, 'Medical Certification');
+  const certification = `I, ${doctorName}, a doctor registered with the Irish Medical Council, certify that the above-named patient is medically unfit for work, school, or college during the period stated below. This certificate has been issued following an online medical consultation and clinical assessment.`;
+  doc.setFillColor(BOX_BG.r, BOX_BG.g, BOX_BG.b);
+  doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+  doc.setLineWidth(0.3);
+  const certLines = doc.splitTextToSize(certification, CONTENT_W - 8);
+  const certBoxH = certLines.length * 4.2 + 8;
+  doc.roundedRect(MARGIN, y - 3, CONTENT_W, certBoxH, 2, 2, 'FD');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('Certificate of incapacity for work', 14, 40);
+  doc.text(certLines, MARGIN + 4, y + 3);
+  y += certBoxH + 6;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(`Certificate ID: ${reference}`, 14, 48);
-  doc.text(`Date issued: ${issuedStr}`, 110, 48);
-  doc.text(`Patient: ${patient}`, 14, 54);
-  doc.text(`Registered GP: ${doctor}`, 110, 54);
-
+  y = drawSectionHeading(doc, y, 'Period of Incapacity');
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(12, 62, 186, 38, 2, 2, 'F');
+  doc.roundedRect(MARGIN, y - 3, CONTENT_W, 18, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Absence period', 16, 72);
+  doc.setTextColor(SLATE.r, SLATE.g, SLATE.b);
+  doc.text('Unfit From:', MARGIN + 4, y + 4);
+  doc.text('Unfit Until:', 110, y + 4);
   doc.setFont('helvetica', 'normal');
-  doc.text(`From: ${fromStr}`, 16, 80);
-  doc.text(`To: ${toStr}`, 110, 80);
-  doc.text(`Reason: ${item.reason}`, 16, 90);
+  doc.setFontSize(11);
+  doc.setTextColor(TEAL.r, TEAL.g, TEAL.b);
+  doc.text(fromStr, MARGIN + 30, y + 10);
+  doc.text(toStr, 110 + 24, y + 10);
+  y += 22;
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('Medical statement', 14, 116);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  const statement = `This is to certify that ${patient} was assessed via QuickDoctor telemedicine services and, in my professional opinion, is medically unfit for work and/or study for the period stated above due to: ${item.reason}.`;
-  const wrapped = doc.splitTextToSize(statement, 182);
-  doc.text(wrapped, 14, 124);
+  y = drawSectionHeading(doc, y, 'Additional Notes (Optional)');
+  if (item.reason?.trim()) {
+    y = drawWrappedBody(doc, y, item.reason.trim(), 9);
+  } else {
+    doc.setDrawColor(LINE.r, LINE.g, LINE.b);
+    doc.setLineWidth(0.25);
+    for (let i = 0; i < 3; i++) {
+      doc.line(MARGIN, y + i * 6, PAGE_W - MARGIN, y + i * 6);
+    }
+    y += 18;
+  }
+  y += 6;
 
-  doc.setFontSize(8);
-  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-  const note =
-    'Issued following a remote consultation. Suitable for employers and educational institutions under applicable Irish telemedicine guidance.';
-  doc.text(doc.splitTextToSize(note, 182), 14, 150);
+  y = Math.min(Math.max(y, 210), 230);
+  drawDoctorFooterBlock(doc, y, doctor, issuedStr);
 
-  addSignatureBlock(doc, doctor, issuedStr, 175);
-
-  doc.setDrawColor(SLATE.r, SLATE.g, SLATE.b);
-  doc.setLineWidth(0.4);
-  doc.rect(168, 34, 28, 22);
-  doc.setFontSize(7);
-  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-  doc.text('VERIFY', 175, 46);
-  doc.text(reference.slice(0, 10), 171, 51);
-
-  addFooter(doc, [
-    'QuickDoctor — Registered in Ireland. Digitally generated and tamper-evident.',
-    `Employers may contact ${SITE_EMAIL} to verify authenticity.  •  ${reference}  •  ${formatAppDateTime(new Date())}`,
+  drawPageFooter(doc, [
+    'This certificate was issued following an online medical consultation with a doctor registered with the IMC.',
+    `Employers may contact www.${SITE_DOMAIN}/verify to verify the authenticity of this certificate.`,
+    `${SITE_EMAIL}  •  ${SITE_PHONE}`,
   ]);
 
   savePdf(doc, `medical-certificate-${reference}.pdf`);

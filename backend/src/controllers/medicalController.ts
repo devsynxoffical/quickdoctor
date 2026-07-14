@@ -168,7 +168,7 @@ export const getDoctorPrescriptions = async (req: AuthRequest, res: Response): P
     const prescriptions = await prisma.prescription.findMany({
       where: { appointment: { doctorId: doctor.id } },
       include: {
-        appointment: { include: { patient: true } },
+        appointment: { include: { patient: true, doctor: true } },
       },
       orderBy: { issuedAt: 'desc' },
     });
@@ -190,7 +190,7 @@ export const getDoctorCertificates = async (req: AuthRequest, res: Response): Pr
     const certificates = await prisma.medicalCertificate.findMany({
       where: { appointment: { doctorId: doctor.id } },
       include: {
-        appointment: { include: { patient: true } },
+        appointment: { include: { patient: true, doctor: true } },
       },
       orderBy: { issuedAt: 'desc' },
     });
@@ -212,7 +212,7 @@ export const getMyPrescriptions = async (req: AuthRequest, res: Response): Promi
 
     const prescriptions = await prisma.prescription.findMany({
       where: { patientId: patient.id },
-      include: { appointment: { include: { doctor: true } } },
+      include: { appointment: { include: { doctor: true, patient: true } } },
       orderBy: { issuedAt: 'desc' },
     });
 
@@ -233,7 +233,7 @@ export const getMyCertificates = async (req: AuthRequest, res: Response): Promis
 
     const certificates = await prisma.medicalCertificate.findMany({
       where: { patientId: patient.id },
-      include: { appointment: { include: { doctor: true } } },
+      include: { appointment: { include: { doctor: true, patient: true } } },
       orderBy: { issuedAt: 'desc' },
     });
 

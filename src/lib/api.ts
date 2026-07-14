@@ -143,8 +143,19 @@ export type PrescriptionRow = {
   issuedAt: string;
   appointment?: {
     id?: string;
-    doctor?: { firstName?: string; lastName?: string; specialization?: string };
-    patient?: { firstName?: string; lastName?: string };
+    doctor?: {
+      firstName?: string;
+      lastName?: string;
+      specialization?: string;
+      licenseNumber?: string;
+    };
+    patient?: {
+      firstName?: string;
+      lastName?: string;
+      dob?: string;
+      address?: string | null;
+      phone?: string | null;
+    };
   };
 };
 
@@ -164,8 +175,18 @@ export type MedicalCertificateRow = {
   issuedAt: string;
   appointment?: {
     id?: string;
-    doctor?: { firstName?: string; lastName?: string };
-    patient?: { firstName?: string; lastName?: string };
+    doctor?: {
+      firstName?: string;
+      lastName?: string;
+      licenseNumber?: string;
+    };
+    patient?: {
+      firstName?: string;
+      lastName?: string;
+      dob?: string;
+      address?: string | null;
+      phone?: string | null;
+    };
   };
 };
 
