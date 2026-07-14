@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Stethoscope, Mail, Phone, MapPin, Share2, Globe, Send } from 'lucide-react';
+import { Mail, Phone, MapPin, Share2, Globe, Send } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 const Footer = () => {
   return (
@@ -10,14 +11,9 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           <div className="col-span-1 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <Stethoscope className="text-white w-6 h-6" />
-              </div>
-              <span className="text-2xl font-bold tracking-tight">
-                Quick<span className="text-primary">Doctor</span>
-              </span>
-            </Link>
+            <div className="mb-6">
+              <Logo href="/" size="md" showText variant="onDark" />
+            </div>
             <p className="text-slate-400 mb-6 leading-relaxed">
               QuickDoctor is your 24/7 digital healthcare partner, 
               providing professional medical consultations and prescriptions at your fingertips.
@@ -62,7 +58,7 @@ const Footer = () => {
             <ul className="space-y-4 text-slate-400">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-primary shrink-0" />
-                <span>Dublin, Republic of Ireland</span>
+                <span>Limerick, Ireland</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-primary shrink-0" />
@@ -81,7 +77,7 @@ const Footer = () => {
         </div>
 
         <div className="pt-10 border-t border-slate-800 text-center text-slate-500 text-sm">
-          <p>© {new Date().getFullYear()} QuickDoctor. All rights reserved. Registered in Ireland.</p>
+          <p>© {new Date().getFullYear()} QuickDoctor Medical Services ltd. All rights reserved. Registered in Ireland under Company Registration Number 817120.</p>
           <p className="mt-2">Disclaimer: This service is not for medical emergencies. In case of emergency, call 112/999.</p>
         </div>
       </div>

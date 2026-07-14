@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Shield, Stethoscope, Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
+import Logo from '@/components/Logo';
 import { authApi } from '@/lib/api';
 import {
   UserRole,
@@ -137,7 +138,9 @@ const PortalGate = ({
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-6">
           <div className="max-w-lg w-full glass p-10 rounded-[40px] medical-shadow text-center space-y-6">
-            <Stethoscope className="w-14 h-14 text-secondary mx-auto" />
+            <div className="flex justify-center">
+              <Logo href={null} size="lg" />
+            </div>
             <h1 className="text-2xl font-black">Application under review</h1>
             <p className="text-slate-500 text-sm">
               Your doctor account is waiting for admin approval. You can sign in here to check status,
@@ -164,8 +167,6 @@ const PortalGate = ({
   }
 
   const isAdmin = accent === 'admin';
-  const Icon = isAdmin ? Shield : Stethoscope;
-  const accentBg = isAdmin ? 'bg-dark-slate' : 'bg-secondary';
   const accentText = isAdmin ? 'text-dark-slate' : 'text-secondary';
   const buttonBg = isAdmin ? 'bg-dark-slate hover:bg-slate-800' : 'bg-secondary hover:bg-secondary/90';
 
@@ -190,13 +191,9 @@ const PortalGate = ({
             animate={{ opacity: 1, y: 0 }}
             className="glass rounded-[40px] p-8 md:p-10 medical-shadow"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={`w-16 h-16 ${accentBg} rounded-2xl flex items-center justify-center mx-auto mb-6 medical-shadow`}
-            >
-              <Icon className="text-white w-8 h-8" />
-            </motion.div>
+            <div className="flex justify-center mb-6">
+              <Logo href="/" size="lg" />
+            </div>
 
             <h1 className="text-2xl md:text-3xl font-black text-center mb-2">{portalTitle}</h1>
             <p className="text-slate-500 text-center text-sm mb-8">{portalDescription}</p>

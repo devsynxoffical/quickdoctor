@@ -1,4 +1,4 @@
-import { formatAppDateTime } from '../lib/appTime';
+import { formatAppDateTime, appTodayDateString } from '../lib/appTime';
 import { Response, Request } from 'express';
 import Stripe from 'stripe';
 import crypto from 'crypto';
@@ -8,10 +8,15 @@ import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
-import { isMaintenanceBlocking } from '../services/siteSettingsService';
+import { getAssignmentSettings, isMaintenanceBlocking } from '../services/siteSettingsService';
 import { applyCoupon, incrementCouponUsage } from '../services/couponService';
 import { findOccupiedSlotConflict, prepareCheckoutAppointment, normalizeSlotTime, SlotTakenError } from '../lib/appointmentSlots';
-import { pickServiceDoctorId, reserveAsyncReviewSlot } from '../lib/asyncServiceSlots';
+import {
+  listCapableDoctorIds,
+  pickServiceDoctorId,
+  reserveAsyncReviewSlot,
+  type ServiceCapability,
+} from '../lib/asyncServiceSlots';
 import { CERTIFICATE_PRICE_CENTS, PRESCRIPTION_REVIEW_PRICE_CENTS } from '../lib/servicePricing';
 import { sendEmail, temporaryPasswordEmail } from '../services/emailService';
 import { normalizeEmail } from '../services/otpService';
@@ -55,8 +60,9 @@ async function runVideoCheckout(params: {
   dateTime: string;
   notes?: string;
   couponCode?: string;
+  needsAssignment?: boolean;
 }): Promise<CheckoutResult> {
-  const { patientId, userId, doctorId, dateTime, notes, couponCode } = params;
+  const { patientId, userId, doctorId, dateTime, notes, couponCode, needsAssignment } = params;
 
   const doctor = await prisma.doctor.findFirst({
     where: {
@@ -108,6 +114,7 @@ async function runVideoCheckout(params: {
       notes,
       priceCents: amountCents,
       holdExpiresAt,
+      needsAssignment: needsAssignment ?? false,
     });
     appointment = prepared.appointment;
     checkoutReused = prepared.reused;
@@ -650,6 +657,30 @@ const SERVICE_TYPES: AppointmentServiceType[] = [
   'PRESCRIPTION_REVIEW',
 ];
 
+function capabilityForServiceType(serviceType: AppointmentServiceType): ServiceCapability {
+  return serviceType === 'MEDICAL_CERTIFICATE' ? 'MEDICAL_CERTIFICATE' : 'PRESCRIPTION_REVIEW';
+}
+
+async function resolveNeedsAssignment(): Promise<boolean> {
+  const settings = await getAssignmentSettings();
+  return settings.mode === 'manual';
+}
+
+async function pickVideoDoctorForSlot(dateTime: string): Promise<{ doctorId: string } | { error: string }> {
+  const slot = normalizeSlotTime(dateTime);
+  const candidateIds = await listCapableDoctorIds('VIDEO_CONSULTATION', 20);
+  if (candidateIds.length === 0) {
+    return { error: 'No doctor is available for video consultations. Please try again later.' };
+  }
+
+  for (const doctorId of candidateIds) {
+    const conflict = await findOccupiedSlotConflict(doctorId, slot);
+    if (!conflict) return { doctorId };
+  }
+
+  return { error: 'No doctor is available for this time slot. Please choose another time.' };
+}
+
 export const createServiceCheckout = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const maintenance = await isMaintenanceBlocking(req.user?.role);
@@ -676,6 +707,20 @@ export const createServiceCheckout = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
+    if (serviceType === 'MEDICAL_CERTIFICATE' && payload && typeof payload === 'object') {
+      const fromDate = (payload as Record<string, unknown>).fromDate;
+      if (typeof fromDate === 'string' && fromDate.trim()) {
+        const from = fromDate.trim().slice(0, 10);
+        const today = appTodayDateString();
+        if (from < today) {
+          res.status(400).json({
+            message: 'Certificate start date cannot be in the past',
+          });
+          return;
+        }
+      }
+    }
+
     const patient = await prisma.patient.findUnique({ where: { userId: userId! } });
     if (!patient) {
       res.status(404).json({ message: 'Patient profile not found' });
@@ -698,7 +743,9 @@ export const createServiceCheckout = async (req: AuthRequest, res: Response): Pr
     }
 
     const amountCents = pricing.finalCents;
-    const doctorId = await pickServiceDoctorId();
+    const capability = capabilityForServiceType(serviceType);
+    const doctorId = await pickServiceDoctorId(capability);
+    const needsAssignment = await resolveNeedsAssignment();
     const dateTime = await reserveAsyncReviewSlot(doctorId);
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
 
@@ -718,6 +765,7 @@ export const createServiceCheckout = async (req: AuthRequest, res: Response): Pr
       serviceSlug: typeof serviceSlug === 'string' ? serviceSlug : undefined,
       serviceName,
       requestPayload: payload ?? {},
+      needsAssignment,
     });
 
     const appointment = prepared.appointment;
@@ -829,6 +877,159 @@ export const createServiceCheckout = async (req: AuthRequest, res: Response): Pr
       appointmentId: appointment.id,
       discountCents: pricing.discountCents,
       finalAmountCents: amountCents,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const createAutoAssignedCheckout = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const maintenance = await isMaintenanceBlocking(req.user?.role);
+    if (maintenance.blocked) {
+      res.status(503).json({ message: maintenance.message, maintenanceMode: true });
+      return;
+    }
+
+    const { dateTime, notes, couponCode } = req.body;
+    const userId = req.user?.id;
+
+    if (!dateTime) {
+      res.status(400).json({ message: 'dateTime is required' });
+      return;
+    }
+
+    const patient = await prisma.patient.findUnique({ where: { userId: userId! } });
+    if (!patient) {
+      res.status(404).json({ message: 'Patient profile not found' });
+      return;
+    }
+
+    const picked = await pickVideoDoctorForSlot(dateTime);
+    if ('error' in picked) {
+      res.status(400).json({ message: picked.error });
+      return;
+    }
+
+    const needsAssignment = await resolveNeedsAssignment();
+    const result = await runVideoCheckout({
+      patientId: patient.id,
+      userId: userId!,
+      doctorId: picked.doctorId,
+      dateTime,
+      notes,
+      couponCode,
+      needsAssignment,
+    });
+
+    res.status(result.status).json(result.body);
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const createGuestAutoAssignedCheckout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const maintenance = await isMaintenanceBlocking(undefined);
+    if (maintenance.blocked) {
+      res.status(503).json({ message: maintenance.message, maintenanceMode: true });
+      return;
+    }
+
+    const { dateTime, notes, couponCode, email, firstName, lastName, phone, dob } = req.body;
+
+    if (!dateTime || !email || !firstName || !lastName || !dob) {
+      res.status(400).json({
+        message: 'dateTime, email, firstName, lastName, and dob are required',
+      });
+      return;
+    }
+
+    const normalizedEmail = normalizeEmail(String(email));
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    if (existingUser) {
+      if (existingUser.role === 'PATIENT' && existingUser.isActive) {
+        res.status(409).json({
+          requiresLogin: true,
+          message: 'Account exists. Please log in to continue booking.',
+        });
+        return;
+      }
+      res.status(400).json({
+        message:
+          existingUser.role === 'PATIENT'
+            ? 'This email belongs to an inactive account. Contact support or use another email.'
+            : 'This email belongs to a doctor or admin account and cannot use guest checkout.',
+      });
+      return;
+    }
+
+    const picked = await pickVideoDoctorForSlot(dateTime);
+    if ('error' in picked) {
+      res.status(400).json({ message: picked.error });
+      return;
+    }
+
+    const tempPassword = generateTempPassword(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: 'PATIENT',
+        isActive: true,
+        patient: {
+          create: {
+            firstName: String(firstName),
+            lastName: String(lastName),
+            dob: new Date(dob),
+            phone: phone ? String(phone) : null,
+          },
+        },
+      },
+      include: { patient: true, doctor: true },
+    });
+
+    const loginUrl = `${frontendBase()}/login`;
+    await sendEmail({
+      to: normalizedEmail,
+      subject: 'Your QuickDoctor account',
+      html: temporaryPasswordEmail({
+        firstName: String(firstName),
+        email: normalizedEmail,
+        tempPassword,
+        loginUrl,
+      }),
+    });
+
+    const patient = user.patient!;
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+    };
+
+    const needsAssignment = await resolveNeedsAssignment();
+    const result = await runVideoCheckout({
+      patientId: patient.id,
+      userId: user.id,
+      customerEmail: normalizedEmail,
+      doctorId: picked.doctorId,
+      dateTime,
+      notes,
+      couponCode,
+      needsAssignment,
+    });
+
+    res.status(result.status).json({
+      ...result.body,
+      token,
+      user: publicUser,
     });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });

@@ -2,7 +2,11 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import { logAudit } from '../services/auditService';
-import { notifyCertificateIssued, notifyPrescriptionIssued } from '../services/notificationService';
+import {
+  notifyCertificateIssued,
+  notifyPrescriptionIssued,
+  notifyPrescriptionSentToPharmacy,
+} from '../services/notificationService';
 import {
   normalizePrescriptionItems,
   summarizePrescriptionItems,
@@ -22,6 +26,20 @@ async function assertDoctorOwnsAppointment(userId: string, appointmentId: string
   }
 
   return { doctor, appointment };
+}
+
+function optionalPharmacyFields(body: Record<string, unknown>) {
+  return {
+    ...(body.pharmacyName !== undefined
+      ? { pharmacyName: body.pharmacyName ? String(body.pharmacyName).trim() : null }
+      : {}),
+    ...(body.pharmacyAddress !== undefined
+      ? { pharmacyAddress: body.pharmacyAddress ? String(body.pharmacyAddress).trim() : null }
+      : {}),
+    ...(body.pharmacyCounty !== undefined
+      ? { pharmacyCounty: body.pharmacyCounty ? String(body.pharmacyCounty).trim() : null }
+      : {}),
+  };
 }
 
 export const issuePrescription = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -48,6 +66,7 @@ export const issuePrescription = async (req: AuthRequest, res: Response): Promis
     }
 
     const summary = summarizePrescriptionItems(items);
+    const pharmacy = optionalPharmacyFields(req.body as Record<string, unknown>);
     const existing = await prisma.prescription.findUnique({ where: { appointmentId } });
 
     const prescription = existing
@@ -58,6 +77,7 @@ export const issuePrescription = async (req: AuthRequest, res: Response): Promis
             dosage: summary.dosage,
             instructions: summary.instructions,
             items: summary.items,
+            ...pharmacy,
           },
         })
       : await prisma.prescription.create({
@@ -68,6 +88,7 @@ export const issuePrescription = async (req: AuthRequest, res: Response): Promis
             dosage: summary.dosage,
             instructions: summary.instructions,
             items: summary.items,
+            ...pharmacy,
           },
         });
 
@@ -88,6 +109,73 @@ export const issuePrescription = async (req: AuthRequest, res: Response): Promis
     });
 
     res.status(existing ? 200 : 201).json(prescription);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
+  }
+};
+
+export const markPrescriptionSentToPharmacy = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id!;
+    const role = req.user?.role;
+    const prescriptionId = String(req.params.id || req.body.prescriptionId || '').trim();
+
+    if (!prescriptionId) {
+      res.status(400).json({ message: 'prescriptionId is required' });
+      return;
+    }
+
+    const prescription = await prisma.prescription.findUnique({
+      where: { id: prescriptionId },
+      include: { appointment: true },
+    });
+
+    if (!prescription) {
+      res.status(404).json({ message: 'Prescription not found' });
+      return;
+    }
+
+    if (role === 'DOCTOR') {
+      const doctor = await prisma.doctor.findUnique({ where: { userId } });
+      if (!doctor || prescription.appointment.doctorId !== doctor.id) {
+        res.status(403).json({ message: 'Not authorized for this prescription' });
+        return;
+      }
+    } else if (role !== 'ADMIN') {
+      res.status(403).json({ message: 'Not authorized' });
+      return;
+    }
+
+    const pharmacy = optionalPharmacyFields(req.body as Record<string, unknown>);
+    const updated = await prisma.prescription.update({
+      where: { id: prescriptionId },
+      data: {
+        pharmacySentAt: new Date(),
+        pharmacySentBy: userId,
+        ...pharmacy,
+      },
+      include: {
+        appointment: { include: { patient: true, doctor: true } },
+      },
+    });
+
+    await notifyPrescriptionSentToPharmacy(updated.id);
+
+    await logAudit({
+      actorId: userId,
+      action: 'PRESCRIPTION_SENT_TO_PHARMACY',
+      entityType: 'Prescription',
+      entityId: updated.id,
+      metadata: {
+        pharmacyName: updated.pharmacyName,
+        pharmacyCounty: updated.pharmacyCounty,
+      },
+    });
+
+    res.status(200).json(updated);
   } catch (error: unknown) {
     res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }
@@ -212,11 +300,32 @@ export const getMyPrescriptions = async (req: AuthRequest, res: Response): Promi
 
     const prescriptions = await prisma.prescription.findMany({
       where: { patientId: patient.id },
-      include: { appointment: { include: { doctor: true, patient: true } } },
+      select: {
+        id: true,
+        issuedAt: true,
+        pharmacyName: true,
+        pharmacySentAt: true,
+        appointment: {
+          select: {
+            id: true,
+            doctor: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
       orderBy: { issuedAt: 'desc' },
     });
 
-    res.status(200).json(prescriptions);
+    res.status(200).json(
+      prescriptions.map((p) => ({
+        id: p.id,
+        issuedAt: p.issuedAt,
+        pharmacyName: p.pharmacyName,
+        pharmacySentAt: p.pharmacySentAt,
+        issued: true,
+        sentToPharmacy: Boolean(p.pharmacySentAt),
+        appointment: p.appointment,
+      }))
+    );
   } catch (error: unknown) {
     res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }

@@ -6,10 +6,18 @@ export type MaintenanceSettings = {
   allowAdminBypass: boolean;
 };
 
+export type AssignmentSettings = {
+  mode: 'auto' | 'manual';
+};
+
 const DEFAULT_MAINTENANCE: MaintenanceSettings = {
   enabled: false,
   message: "We're performing scheduled maintenance. Booking will resume shortly.",
   allowAdminBypass: true,
+};
+
+const DEFAULT_ASSIGNMENT: AssignmentSettings = {
+  mode: 'auto',
 };
 
 export async function getMaintenanceSettings(): Promise<MaintenanceSettings> {
@@ -20,6 +28,15 @@ export async function getMaintenanceSettings(): Promise<MaintenanceSettings> {
     enabled: Boolean(v.enabled),
     message: typeof v.message === 'string' ? v.message : DEFAULT_MAINTENANCE.message,
     allowAdminBypass: v.allowAdminBypass !== false,
+  };
+}
+
+export async function getAssignmentSettings(): Promise<AssignmentSettings> {
+  const row = await prisma.cmsSiteSetting.findUnique({ where: { key: 'assignment' } });
+  if (!row?.value || typeof row.value !== 'object') return DEFAULT_ASSIGNMENT;
+  const v = row.value as Record<string, unknown>;
+  return {
+    mode: v.mode === 'manual' ? 'manual' : 'auto',
   };
 }
 

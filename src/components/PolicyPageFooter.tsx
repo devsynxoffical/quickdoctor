@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_COMPANY_NAME, SITE_COMPANY_REG } from "@/lib/siteContact";
 
 const policyLinks = [
   { label: "Patient Guide", href: "/patient-guide" },
@@ -6,21 +7,6 @@ const policyLinks = [
   { label: "Cookie Policy", href: "/cookies" },
   { label: "Terms & Conditions", href: "/terms" },
   { label: "Refund Policy", href: "/refund-policy" },
-];
-
-const linkGroups = [
-  {
-    title: "About us",
-    links: [
-      { label: "About", href: "/about" },
-      { label: "Help", href: "/faqs" },
-      { label: "Careers", href: "/contact" },
-    ],
-  },
-  {
-    title: "Health HQ",
-    links: [{ label: "Blog", href: "/blog" }],
-  },
 ];
 
 export default function PolicyPageFooter() {
@@ -40,27 +26,10 @@ export default function PolicyPageFooter() {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-sm text-slate-600">
-        {linkGroups.map((group) => (
-          <div key={group.title}>
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{group.title}</p>
-            <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-              {group.links.map((link) => (
-                <li key={link.label}>
-                  <Link href={link.href} className="hover:text-primary transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
       <div className="mt-6 pt-4 border-t border-slate-100 text-xs sm:text-sm text-slate-600 leading-relaxed">
         <p>
-          &copy; {new Date().getFullYear()} QuickDoctor Limited. Registered in Ireland under Company Registration
-          Number 536841.
+          &copy; {new Date().getFullYear()} {SITE_COMPANY_NAME}. Registered in Ireland under Company Registration Number{" "}
+          {SITE_COMPANY_REG}.
         </p>
         <p className="mt-3">
           <Link href="#top" className="text-primary font-semibold hover:underline">

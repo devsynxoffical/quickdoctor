@@ -185,14 +185,7 @@ export default function MenopausalVaginalDrynessTreatmentPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       <Navbar />
-
-      <div className="pt-24 bg-primary/5 border-y border-primary/10 py-3 px-6 text-center">
-        <p className="text-sm font-bold text-primary">
-          A healthier year starts now. Check your BMI and access medical weight care from â‚¬50.
-        </p>
-      </div>
-
-      <main>
+<main>
         <section className="py-16">
           <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
             <div>

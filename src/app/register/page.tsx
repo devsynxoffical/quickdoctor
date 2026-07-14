@@ -3,9 +3,10 @@
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Stethoscope, User, Calendar, Mail, Lock, UserPlus, ShieldCheck } from 'lucide-react';
+import { User, Calendar, Mail, Lock, UserPlus, ShieldCheck } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import Logo from '@/components/Logo';
 import { authApi } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getLoginUrl, resolvePatientRedirect, saveSession } from '@/lib/auth';
@@ -28,6 +29,7 @@ function RegisterForm() {
     password: '',
     otp: '',
   });
+  const [agreedTerms, setAgreedTerms] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -70,6 +72,10 @@ function RegisterForm() {
       setError('Password must be at least 8 characters.');
       return;
     }
+    if (!agreedTerms) {
+      setError('Please agree to the privacy policy and terms and conditions to continue.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -92,8 +98,8 @@ function RegisterForm() {
       className="w-full max-w-lg"
     >
       <div className="glass rounded-[40px] p-8 md:p-12 medical-shadow">
-        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Stethoscope className="text-primary w-8 h-8" />
+        <div className="flex justify-center mb-6">
+          <Logo href="/" size="lg" showText={false} />
         </div>
 
         <h1 className="text-3xl font-black text-center mb-2">Create patient account</h1>
@@ -226,20 +232,38 @@ function RegisterForm() {
           </div>
 
           <p className="text-xs text-slate-400 leading-relaxed">
-            To book a consultation, use{' '}
-            <Link href="/doctors" className="text-primary font-bold hover:underline">
-              Find a doctor
-            </Link>{' '}
-            after registering. Doctors should apply via{' '}
+            After registering you can book a consultation, certificate, or prescription review directly — a doctor will be
+            assigned for you. Doctors should apply via{' '}
             <Link href="/doctor/apply" className="text-secondary font-bold hover:underline">
               Become a doctor
             </Link>
             .
           </p>
 
+          <label className="flex items-start gap-3 text-sm text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreedTerms}
+              onChange={(e) => setAgreedTerms(e.target.checked)}
+              className="mt-1 w-4 h-4 accent-primary shrink-0"
+              required
+            />
+            <span>
+              I have read and agree to the{' '}
+              <Link href="/privacy" className="text-primary font-bold underline" target="_blank">
+                privacy policy
+              </Link>{' '}
+              and{' '}
+              <Link href="/terms" className="text-primary font-bold underline" target="_blank">
+                terms and conditions
+              </Link>
+              .
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !agreedTerms}
             className="w-full py-5 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? 'Creating account…' : 'Create account'}

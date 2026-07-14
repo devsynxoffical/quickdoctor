@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ArrowRight, CheckCircle2, ChevronDown, Clock, ShieldCheck, Users, XCircle } from "lucide-react";
+import PharmacyPicker from "@/components/PharmacyPicker";
+import { resolvePharmacyDisplay } from "@/lib/pharmacies";
 
 const faqs = [
   "Who is the service suitable for?",
@@ -92,7 +94,9 @@ export default function EczemaTreatmentPage() {
   const [weightKg, setWeightKg] = useState("");
   const [knowsBloodPressure, setKnowsBloodPressure] = useState("");
   const [bloodPressure, setBloodPressure] = useState("");
-  const [preferredPharmacy, setPreferredPharmacy] = useState("");
+  const [preferredPharmacyId, setPreferredPharmacyId] = useState("");
+  const [customPharmacy, setCustomPharmacy] = useState("");
+  const preferredPharmacy = resolvePharmacyDisplay(preferredPharmacyId, customPharmacy);
   const [contactNumber, setContactNumber] = useState("");
   const [confirmAnswers, setConfirmAnswers] = useState("");
   const [confirmOwnUse, setConfirmOwnUse] = useState("");
@@ -205,14 +209,7 @@ export default function EczemaTreatmentPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       <Navbar />
-
-      <div className="pt-24 bg-primary/5 border-y border-primary/10 py-3 px-6 text-center">
-        <p className="text-sm font-bold text-primary">
-          A healthier year starts now. Check your BMI and access medical weight care from EUR50.
-        </p>
-      </div>
-
-      <main>
+<main>
         {showQuestionnaire && (
           <section id="eczema-questionnaire" className="pt-28 pb-16">
             <div className="max-w-4xl mx-auto px-6">
@@ -471,10 +468,15 @@ export default function EczemaTreatmentPage() {
                 {currentStep === 8 && (
                   <div className="mt-8 space-y-7">
                     <h2 className="text-3xl font-black text-dark-slate dark:text-white">Pharmacy Details</h2>
-                    <div>
-                      <p className="font-black text-dark-slate dark:text-white">1. Preferred pharmacy/town</p>
-                      <input value={preferredPharmacy} onChange={(e) => setPreferredPharmacy(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm" placeholder="Pharmacy name or town" />
-                    </div>
+                    <PharmacyPicker
+                      value={preferredPharmacyId}
+                      onChange={setPreferredPharmacyId}
+                      customName={customPharmacy}
+                      onCustomNameChange={setCustomPharmacy}
+                      required
+                      label="Preferred pharmacy"
+                      className="[&_select]:rounded-xl [&_select]:border [&_select]:border-slate-300 [&_select]:bg-white [&_input]:rounded-xl [&_input]:border [&_input]:border-slate-300 [&_input]:bg-white"
+                    />
                     <div>
                       <p className="font-black text-dark-slate dark:text-white">2. Contact number</p>
                       <input value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm" placeholder="Phone number" />

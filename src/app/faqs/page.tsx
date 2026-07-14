@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -17,7 +18,7 @@ const featuredFaqs = [
   {
     question: "How does it work?",
     answer: [
-      "You can access care through an online medical questionnaire, a face-to-face video consultation, or home health testing.",
+      "You can access care through an online medical questionnaire or a face-to-face video consultation.",
       "Our doctors review your case and prescribe treatment at their clinical discretion where appropriate.",
       "Some treatments are available without video consultation via online assessment.",
       "If needed, you can book a video consultation and speak directly with a doctor.",
@@ -38,7 +39,6 @@ const featuredFaqs = [
       "Prescription service is available 24/7.",
       "Video consultation hours are Monday to Friday: 8:00 to 22:00.",
       "Weekends and some Bank Holidays: 10:00 to 18:00.",
-      "Home Health Tests and STI Home Health Tests can be ordered 24/7.",
     ],
   },
   {
@@ -46,7 +46,6 @@ const featuredFaqs = [
     answer: [
       "Prescription services start from €25.",
       "Video consultation prices depend on time/day and are shown during booking.",
-      "Home Health Tests start from €79 and STI Home Health Tests start from €69.",
       "Weight Management service starts from €50.",
       "Travel health consultation costs €50, while vaccine prices vary by pharmacy.",
       "Medication pricing is set by local pharmacies because QuickDoctor is not an online pharmacy.",
@@ -127,11 +126,8 @@ export default function FaqPage() {
       <main className="pt-28 pb-16 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Logo</p>
+            <div className="mb-3"><Logo href="/" size="sm" showText /></div>
             <h1 className="mt-2 text-2xl sm:text-4xl font-black text-primary">Frequently Asked Questions</h1>
-            <p className="mt-4 text-slate-700 font-semibold">
-              A healthier year starts now. Check your BMI and access medical weight care from €50.
-            </p>
             <p className="mt-4 text-sm text-slate-600">By QuickDoctor Support</p>
             <p className="text-sm text-slate-600">Help Center FAQ Collection</p>
             <p className="mt-3 text-sm text-slate-600">

@@ -3,28 +3,39 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 type LogoProps = {
-  href?: string;
+  href?: string | null;
   className?: string;
   showText?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Prefer white-friendly mark on dark backgrounds (same asset, still works). */
+  variant?: 'default' | 'onDark';
 };
 
 const sizes = {
   sm: { icon: 32, text: 'text-lg' },
   md: { icon: 40, text: 'text-xl sm:text-2xl' },
-  lg: { icon: 48, text: 'text-2xl sm:text-3xl' },
+  lg: { icon: 56, text: 'text-2xl sm:text-3xl' },
+  xl: { icon: 72, text: 'text-3xl' },
 };
 
-export default function Logo({ href = '/', className = '', showText = false, size = 'md' }: LogoProps) {
+export default function Logo({
+  href = '/',
+  className = '',
+  showText = false,
+  size = 'md',
+  variant = 'default',
+}: LogoProps) {
   const s = sizes[size];
   const content = (
     <span className={`inline-flex items-center gap-2.5 group ${className}`}>
       <Image
-        src="/logo.png"
-        alt="QuickDoctor home"
+        src="/logo.svg"
+        alt="QuickDoctor"
         width={s.icon}
         height={s.icon}
-        className="rounded-xl group-hover:scale-[1.03] transition-transform"
+        className={`object-contain group-hover:scale-[1.03] transition-transform ${
+          variant === 'onDark' ? 'brightness-110' : ''
+        }`}
         priority
       />
       {showText && (
@@ -37,7 +48,7 @@ export default function Logo({ href = '/', className = '', showText = false, siz
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex">
+      <Link href={href} className="inline-flex" aria-label="QuickDoctor home">
         {content}
       </Link>
     );

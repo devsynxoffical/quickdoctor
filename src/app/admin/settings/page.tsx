@@ -32,6 +32,9 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [announceSaved, setAnnounceSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assignmentMode, setAssignmentMode] = useState<"auto" | "manual">("auto");
+  const [savingAssign, setSavingAssign] = useState(false);
+  const [assignSaved, setAssignSaved] = useState(false);
 
   useEffect(() => {
     cmsAdminApi
@@ -55,6 +58,11 @@ export default function AdminSettingsPage() {
             linkHref: v.linkHref || "",
             linkLabel: v.linkLabel || "Learn more",
           });
+        }
+        const assignRow = rows.find((r) => r.key === "assignment");
+        if (assignRow?.value && typeof assignRow.value === "object") {
+          const v = assignRow.value as { mode?: string };
+          setAssignmentMode(v.mode === "manual" ? "manual" : "auto");
         }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load settings"))
@@ -89,6 +97,20 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const saveAssignment = async () => {
+    setSavingAssign(true);
+    setError(null);
+    setAssignSaved(false);
+    try {
+      await cmsAdminApi.saveSettings([{ key: "assignment", value: { mode: assignmentMode } }]);
+      setAssignSaved(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSavingAssign(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 max-w-2xl">
       <div>
@@ -98,6 +120,50 @@ export default function AdminSettingsPage() {
 
       <div className="glass p-6 rounded-3xl">
         <ChangePasswordForm />
+      </div>
+
+      <div className="glass p-6 rounded-3xl space-y-5">
+        <div className="flex items-center gap-3">
+          <Settings className="w-6 h-6 text-primary" />
+          <div>
+            <p className="font-black">Doctor assignment</p>
+            <p className="text-sm text-slate-500">
+              Auto assigns bookings to available doctors by category (consultation / prescription / certificate). Manual
+              flags bookings for admin reassignment.
+            </p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800">
+            <input
+              type="radio"
+              name="assignment"
+              checked={assignmentMode === "auto"}
+              onChange={() => setAssignmentMode("auto")}
+              className="accent-primary"
+            />
+            <span className="font-bold text-sm">Automatic — system assigns an available matching doctor</span>
+          </label>
+          <label className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800">
+            <input
+              type="radio"
+              name="assignment"
+              checked={assignmentMode === "manual"}
+              onChange={() => setAssignmentMode("manual")}
+              className="accent-primary"
+            />
+            <span className="font-bold text-sm">Manual — admin reviews and assigns doctors</span>
+          </label>
+        </div>
+        {assignSaved && <p className="text-sm text-emerald-600 font-bold">Assignment mode saved.</p>}
+        <button
+          type="button"
+          onClick={saveAssignment}
+          disabled={savingAssign}
+          className="px-6 py-3 bg-primary text-white rounded-2xl font-black text-sm disabled:opacity-60"
+        >
+          {savingAssign ? "Saving…" : "Save assignment mode"}
+        </button>
       </div>
 
       <div className="glass p-6 rounded-3xl space-y-5">

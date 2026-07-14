@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   createCheckoutSession,
   createGuestCheckoutSession,
+  createAutoAssignedCheckout,
+  createGuestAutoAssignedCheckout,
   createServiceCheckout,
   devConfirmPayment,
   getCheckoutStatus,
@@ -13,6 +15,8 @@ const router = Router();
 
 router.post('/checkout', authenticate, authorize(['PATIENT']), createCheckoutSession);
 router.post('/guest-checkout', createGuestCheckoutSession);
+router.post('/auto-checkout', authenticate, authorize(['PATIENT']), createAutoAssignedCheckout);
+router.post('/guest-auto-checkout', createGuestAutoAssignedCheckout);
 router.post('/service-checkout', authenticate, authorize(['PATIENT']), createServiceCheckout);
 router.post('/validate-coupon', validateCoupon);
 router.get('/status', authenticate, authorize(['PATIENT']), getCheckoutStatus);

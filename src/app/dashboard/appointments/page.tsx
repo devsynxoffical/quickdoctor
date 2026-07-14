@@ -183,7 +183,7 @@ function AppointmentsContent() {
             <p className="text-slate-500 mt-2">Manage your upcoming and past medical consultations.</p>
           </div>
           <Link
-            href="/doctors"
+            href="/book"
             className="px-8 py-4 bg-primary text-white rounded-2xl font-black flex items-center gap-2 medical-shadow hover:scale-105 transition-all w-full md:w-auto justify-center"
           >
             <Plus className="w-5 h-5" />
@@ -239,7 +239,7 @@ function AppointmentsContent() {
               Choose a doctor and time slot to complete your booking.
             </p>
             <Link
-              href="/doctors"
+              href="/book"
               className="px-6 py-3 bg-primary text-white rounded-xl font-black text-sm"
             >
               Browse doctors
@@ -397,7 +397,7 @@ function AppointmentsContent() {
                 Book your first consultation with one of our expert doctors.
               </p>
               <Link
-                href="/doctors"
+                href="/book"
                 className="inline-block px-8 py-4 bg-primary text-white rounded-2xl font-bold medical-shadow"
               >
                 Find a doctor

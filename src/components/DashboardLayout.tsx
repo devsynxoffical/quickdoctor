@@ -82,7 +82,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/doctors');
+    router.push('/book');
   };
 
   return (
@@ -132,13 +132,13 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
         <div className="p-6">
           <Link
-            href="/doctors"
+            href="/book"
             className="block bg-gradient-to-br from-primary to-accent rounded-3xl p-5 text-white medical-shadow hover:opacity-95 transition-opacity"
           >
             <p className="text-xs font-bold opacity-80 mb-1">Need a GP?</p>
             <p className="text-sm font-black mb-4">Book a video consultation</p>
             <span className="w-full py-2 bg-white text-primary rounded-xl text-xs font-black block text-center">
-              Find a doctor
+              Book now
             </span>
           </Link>
         </div>
@@ -158,7 +158,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                   type="text" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Find a doctor to book…" 
+                  placeholder="Search appointments…" 
                   className="w-full pl-12 pr-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border-none text-sm focus:ring-2 focus:ring-primary transition-all"
                 />
              </form>

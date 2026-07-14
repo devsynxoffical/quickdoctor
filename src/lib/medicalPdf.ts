@@ -37,6 +37,7 @@ async function loadLogoDataUrl(): Promise<string | null> {
   if (cachedLogoDataUrl !== undefined) return cachedLogoDataUrl;
   try {
     const res = await fetch('/logo.png');
+    // Prefer PNG for jsPDF addImage compatibility; SVG logo is used on the website.
     if (!res.ok) {
       cachedLogoDataUrl = null;
       return null;

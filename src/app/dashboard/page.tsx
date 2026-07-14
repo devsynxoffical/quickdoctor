@@ -138,11 +138,11 @@ export default function PatientDashboardOverview() {
                 </button>
               )}
               <Link
-                href="/doctors"
+                href="/book"
                 className="px-8 py-4 bg-white/15 text-white border border-white/30 rounded-2xl font-bold flex items-center gap-2 hover:bg-white/25 transition-all"
               >
                 <Stethoscope className="w-5 h-5" />
-                Book a doctor
+                Book a consultation
               </Link>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function PatientDashboardOverview() {
                   Book your first video consultation with an approved GP.
                 </p>
                 <Link
-                  href="/doctors"
+                  href="/book"
                   className="px-6 py-3 bg-primary text-white rounded-xl text-sm font-black"
                 >
                   Find a doctor

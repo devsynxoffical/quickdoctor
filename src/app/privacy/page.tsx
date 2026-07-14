@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PolicyPageFooter from "@/components/PolicyPageFooter";
@@ -11,11 +12,8 @@ export default function PrivacyPage() {
       <main className="pt-28 pb-16 px-4 sm:px-6" id="top">
         <div className="max-w-5xl mx-auto">
           <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8 mb-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Logo</p>
+            <div className="mb-3"><Logo href="/" size="sm" showText /></div>
             <h1 className="mt-2 text-2xl sm:text-4xl font-black text-primary">Privacy Policy</h1>
-            <p className="mt-4 text-slate-700 font-semibold">
-              A healthier year starts now. Check your BMI and access medical weight care from €50.
-            </p>
             <p className="mt-4 text-sm text-slate-600">Version 4.0</p>
             <p className="text-sm text-slate-600">Effective from 04/2026</p>
           </section>
@@ -24,7 +22,7 @@ export default function PrivacyPage() {
             <div>
               <h2 className="text-xl font-black text-primary">Privacy Policy Statement</h2>
               <p className="mt-3">
-                This privacy statement applies to the website, apps and services available from QuickDoctor Ltd (
+                This privacy statement applies to the website, apps and services available from QuickDoctor Medical Services ltd (
                 <a href="https://www.quickdoctor.ie" className="text-primary font-semibold hover:underline">
                   https://www.quickdoctor.ie
                 </a>
@@ -206,7 +204,7 @@ export default function PrivacyPage() {
             <div>
               <h3 className="text-lg font-black text-primary">How to Contact QuickDoctor with Questions</h3>
               <p className="mt-2">
-                The data controller is QuickDoctor Ltd. Contact by email at{" "}
+                The data controller is QuickDoctor Medical Services ltd. Contact by email at{" "}
                 <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
                   info@quickdoctor.ie
                 </a>{" "}
@@ -215,13 +213,9 @@ export default function PrivacyPage() {
               <p className="mt-2">
                 Data Protection Officer
                 <br />
-                QuickDoctor Ltd.
+                QuickDoctor Medical Services ltd
                 <br />
-                20 Knockmeenagh Road
-                <br />
-                Dublin 22
-                <br />
-                Ireland
+                Limerick, Ireland
               </p>
             </div>
           </section>

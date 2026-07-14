@@ -1,6 +1,30 @@
 import crypto from 'crypto';
+import type { Prisma } from '@prisma/client';
 import prisma from '../config/db';
 import { findOccupiedSlotConflict } from './appointmentSlots';
+
+export type ServiceCapability =
+  | 'VIDEO_CONSULTATION'
+  | 'MEDICAL_CERTIFICATE'
+  | 'PRESCRIPTION_REVIEW';
+
+const CAPABILITY_FIELD: Record<
+  ServiceCapability,
+  'offersVideoConsultation' | 'offersMedicalCertificate' | 'offersPrescriptionReview'
+> = {
+  VIDEO_CONSULTATION: 'offersVideoConsultation',
+  MEDICAL_CERTIFICATE: 'offersMedicalCertificate',
+  PRESCRIPTION_REVIEW: 'offersPrescriptionReview',
+};
+
+function capableDoctorWhere(capability: ServiceCapability): Prisma.DoctorWhereInput {
+  return {
+    status: 'APPROVED',
+    profileComplete: true,
+    user: { isActive: true },
+    [CAPABILITY_FIELD[capability]]: true,
+  };
+}
 
 /** Placeholder calendar slot for async certificate/prescription reviews (not a live video slot). */
 export async function reserveAsyncReviewSlot(doctorId: string): Promise<Date> {
@@ -18,22 +42,36 @@ export async function reserveAsyncReviewSlot(doctorId: string): Promise<Date> {
   return new Date(base.getTime() + crypto.randomInt(10_000, 600_000));
 }
 
-export async function pickServiceDoctorId(): Promise<string> {
+export async function listCapableDoctorIds(
+  capability: ServiceCapability,
+  take = 20
+): Promise<string[]> {
+  const configured = process.env.DEFAULT_SERVICE_DOCTOR_ID?.trim();
+  const doctors = await prisma.doctor.findMany({
+    where: capableDoctorWhere(capability),
+    orderBy: { lastName: 'asc' },
+    take,
+    select: { id: true },
+  });
+
+  const ids = doctors.map((d) => d.id);
+  if (configured && ids.includes(configured)) {
+    return [configured, ...ids.filter((id) => id !== configured)];
+  }
+  return ids;
+}
+
+export async function pickServiceDoctorId(capability: ServiceCapability): Promise<string> {
   const configured = process.env.DEFAULT_SERVICE_DOCTOR_ID?.trim();
   if (configured) {
     const doctor = await prisma.doctor.findFirst({
-      where: {
-        id: configured,
-        status: 'APPROVED',
-        profileComplete: true,
-        user: { isActive: true },
-      },
+      where: { id: configured, ...capableDoctorWhere(capability) },
     });
     if (doctor) return doctor.id;
   }
 
   const doctor = await prisma.doctor.findFirst({
-    where: { status: 'APPROVED', profileComplete: true, user: { isActive: true } },
+    where: capableDoctorWhere(capability),
     orderBy: { lastName: 'asc' },
   });
 

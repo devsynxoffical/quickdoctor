@@ -6,12 +6,19 @@ import {
   getMyCertificates,
   getDoctorPrescriptions,
   getDoctorCertificates,
+  markPrescriptionSentToPharmacy,
 } from '../controllers/medicalController';
 import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 
 router.post('/prescription', authenticate, authorize(['DOCTOR']), issuePrescription);
+router.post(
+  '/prescription/:id/send-to-pharmacy',
+  authenticate,
+  authorize(['DOCTOR', 'ADMIN']),
+  markPrescriptionSentToPharmacy
+);
 router.post('/certificate', authenticate, authorize(['DOCTOR']), issueCertificate);
 router.get('/prescriptions/doctor', authenticate, authorize(['DOCTOR']), getDoctorPrescriptions);
 router.get('/certificates/doctor', authenticate, authorize(['DOCTOR']), getDoctorCertificates);

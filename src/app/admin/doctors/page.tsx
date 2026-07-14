@@ -14,6 +14,9 @@ type DoctorRow = {
   status: string;
   consultationFeeCents: number;
   profileComplete?: boolean;
+  offersVideoConsultation?: boolean;
+  offersPrescriptionReview?: boolean;
+  offersMedicalCertificate?: boolean;
   user?: { email: string; isActive?: boolean };
 };
 
@@ -34,6 +37,9 @@ export default function AdminDoctorsPage() {
     status: 'APPROVED',
     isActive: true,
     profileComplete: true,
+    offersVideoConsultation: true,
+    offersPrescriptionReview: true,
+    offersMedicalCertificate: true,
   });
 
   const load = () => {
@@ -63,6 +69,9 @@ export default function AdminDoctorsPage() {
       status: row.status || 'APPROVED',
       isActive: row.user?.isActive !== false,
       profileComplete: row.profileComplete !== false,
+      offersVideoConsultation: row.offersVideoConsultation !== false,
+      offersPrescriptionReview: row.offersPrescriptionReview !== false,
+      offersMedicalCertificate: row.offersMedicalCertificate !== false,
     });
   };
 
@@ -83,6 +92,9 @@ export default function AdminDoctorsPage() {
         status: form.status,
         isActive: form.isActive,
         profileComplete: form.profileComplete,
+        offersVideoConsultation: form.offersVideoConsultation,
+        offersPrescriptionReview: form.offersPrescriptionReview,
+        offersMedicalCertificate: form.offersMedicalCertificate,
       });
       setEditing(null);
       load();
@@ -109,7 +121,9 @@ export default function AdminDoctorsPage() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div>
         <h1 className="text-4xl font-black">All doctors</h1>
-        <p className="text-slate-500 mt-2">Edit doctor details, registration numbers, and disable approved doctors.</p>
+        <p className="text-slate-500 mt-2">
+          Edit doctor details, service categories (consultation / prescription / certificate), and disable accounts.
+        </p>
       </div>
 
       {loading ? (
@@ -124,6 +138,7 @@ export default function AdminDoctorsPage() {
                 <th className="p-4 font-black uppercase text-[10px] text-slate-400">Name</th>
                 <th className="p-4 font-black uppercase text-[10px] text-slate-400">Email</th>
                 <th className="p-4 font-black uppercase text-[10px] text-slate-400">Specialty</th>
+                <th className="p-4 font-black uppercase text-[10px] text-slate-400">Categories</th>
                 <th className="p-4 font-black uppercase text-[10px] text-slate-400">Status</th>
                 <th className="p-4 font-black uppercase text-[10px] text-slate-400">Fee</th>
                 <th className="p-4 font-black uppercase text-[10px] text-slate-400">Actions</th>
@@ -137,6 +152,15 @@ export default function AdminDoctorsPage() {
                   </td>
                   <td className="p-4 text-slate-500">{d.user?.email ?? '—'}</td>
                   <td className="p-4">{d.specialization}</td>
+                  <td className="p-4 text-xs text-slate-500">
+                    {[
+                      d.offersVideoConsultation !== false ? 'Consult' : null,
+                      d.offersPrescriptionReview !== false ? 'Rx' : null,
+                      d.offersMedicalCertificate !== false ? 'Cert' : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || '—'}
+                  </td>
                   <td className="p-4">
                     <span className="px-3 py-1 rounded-full text-xs font-black bg-primary/10 text-primary">
                       {d.status}
@@ -253,6 +277,36 @@ export default function AdminDoctorsPage() {
               />
               Profile complete (bookable)
             </label>
+            <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+              <p className="text-[10px] font-black uppercase text-slate-400">Assignment categories</p>
+              <label className="flex items-center gap-3 text-sm font-bold">
+                <input
+                  type="checkbox"
+                  checked={form.offersVideoConsultation}
+                  onChange={(e) => setForm((f) => ({ ...f, offersVideoConsultation: e.target.checked }))}
+                  className="w-4 h-4 accent-primary"
+                />
+                Consultation doctor
+              </label>
+              <label className="flex items-center gap-3 text-sm font-bold">
+                <input
+                  type="checkbox"
+                  checked={form.offersPrescriptionReview}
+                  onChange={(e) => setForm((f) => ({ ...f, offersPrescriptionReview: e.target.checked }))}
+                  className="w-4 h-4 accent-primary"
+                />
+                Prescription / prescriber
+              </label>
+              <label className="flex items-center gap-3 text-sm font-bold">
+                <input
+                  type="checkbox"
+                  checked={form.offersMedicalCertificate}
+                  onChange={(e) => setForm((f) => ({ ...f, offersMedicalCertificate: e.target.checked }))}
+                  className="w-4 h-4 accent-primary"
+                />
+                Certificate issuing doctor
+              </label>
+            </div>
             {error && <p className="text-sm text-red-600 font-bold">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 rounded-xl font-bold text-sm">

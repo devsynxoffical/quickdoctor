@@ -99,6 +99,9 @@ export const updateDoctor = async (req: AuthRequest, res: Response): Promise<voi
       email,
       isActive,
       status,
+      offersVideoConsultation,
+      offersPrescriptionReview,
+      offersMedicalCertificate,
     } = req.body;
 
     const doctor = await prisma.doctor.findUnique({
@@ -169,6 +172,15 @@ export const updateDoctor = async (req: AuthRequest, res: Response): Promise<voi
           : {}),
         ...(profileComplete !== undefined ? { profileComplete: Boolean(profileComplete) } : {}),
         ...(status !== undefined ? { status: status as DoctorStatus } : {}),
+        ...(offersVideoConsultation !== undefined
+          ? { offersVideoConsultation: Boolean(offersVideoConsultation) }
+          : {}),
+        ...(offersPrescriptionReview !== undefined
+          ? { offersPrescriptionReview: Boolean(offersPrescriptionReview) }
+          : {}),
+        ...(offersMedicalCertificate !== undefined
+          ? { offersMedicalCertificate: Boolean(offersMedicalCertificate) }
+          : {}),
         user: {
           update: {
             ...(email !== undefined ? { email: normalizeEmail(String(email)) } : {}),
@@ -291,6 +303,59 @@ export const adminCreateAppointment = async (req: AuthRequest, res: Response): P
       message: 'Appointment booked and confirmed',
       appointmentId: appointment.id,
     });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const assignAppointmentDoctor = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const appointmentId = String(req.params.id);
+    const { doctorId } = req.body;
+
+    if (!doctorId || typeof doctorId !== 'string') {
+      res.status(400).json({ message: 'doctorId is required' });
+      return;
+    }
+
+    const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+    if (!appointment) {
+      res.status(404).json({ message: 'Appointment not found' });
+      return;
+    }
+
+    const doctor = await prisma.doctor.findFirst({
+      where: {
+        id: doctorId,
+        status: 'APPROVED',
+        profileComplete: true,
+        user: { isActive: true },
+      },
+    });
+
+    if (!doctor) {
+      res.status(404).json({ message: 'Doctor not available' });
+      return;
+    }
+
+    if (doctor.id !== appointment.doctorId) {
+      const conflict = await findOccupiedSlotConflict(doctor.id, appointment.dateTime, appointmentId);
+      if (conflict) {
+        res.status(400).json({ message: 'This time slot is not available for the selected doctor' });
+        return;
+      }
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: {
+        doctorId: doctor.id,
+        needsAssignment: false,
+      },
+      include: { patient: true, doctor: true, payment: true },
+    });
+
+    res.status(200).json(updated);
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }

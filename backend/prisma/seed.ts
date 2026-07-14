@@ -65,6 +65,9 @@ async function main() {
       consultationFeeCents: 4900,
       specialtyCategoryId: gp?.id,
       specialization: 'General Practitioner',
+      offersVideoConsultation: true,
+      offersPrescriptionReview: true,
+      offersMedicalCertificate: true,
     },
     create: {
       userId: doctorUser.id,
@@ -77,6 +80,9 @@ async function main() {
       profileComplete: true,
       consultationFeeCents: 4900,
       bio: 'Experienced GP available for video consultations.',
+      offersVideoConsultation: true,
+      offersPrescriptionReview: true,
+      offersMedicalCertificate: true,
     },
   });
 
@@ -279,10 +285,19 @@ async function main() {
 
   await prisma.cmsSiteSetting.upsert({
     where: { key: 'site' },
-    update: { value: { name: 'QuickDoctor', contactEmail: 'support@quickdoctor.com' } },
+    update: { value: { name: 'QuickDoctor', contactEmail: 'info@quickdoctor.ie' } },
     create: {
       key: 'site',
-      value: { name: 'QuickDoctor', contactEmail: 'support@quickdoctor.com', footerText: '© QuickDoctor' },
+      value: { name: 'QuickDoctor', contactEmail: 'info@quickdoctor.ie', footerText: '© QuickDoctor' },
+    },
+  });
+
+  await prisma.cmsSiteSetting.upsert({
+    where: { key: 'assignment' },
+    update: {},
+    create: {
+      key: 'assignment',
+      value: { mode: 'auto' },
     },
   });
 

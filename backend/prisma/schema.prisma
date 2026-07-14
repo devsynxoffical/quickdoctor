@@ -152,6 +152,10 @@ model Doctor {
   consultationFeeCents Int           @default(4900)
   currency             String        @default("EUR")
   profileComplete      Boolean       @default(false)
+  /// Category flags for auto-assignment of bookings
+  offersVideoConsultation   Boolean @default(true)
+  offersPrescriptionReview  Boolean @default(false)
+  offersMedicalCertificate  Boolean @default(false)
 
   appointments Appointment[]
   availability DoctorAvailability[]
@@ -198,6 +202,8 @@ model Appointment {
   notes         String?
   priceCents    Int
   holdExpiresAt DateTime?
+  /// When true, admin must (or may) reassign to a capability-matched doctor
+  needsAssignment Boolean @default(false)
 
   prescription Prescription?
   certificate  MedicalCertificate?
@@ -352,6 +358,12 @@ model Prescription {
   instructions String?
   items        Json?
   issuedAt     DateTime @default(now())
+
+  pharmacyName    String?
+  pharmacyAddress String?
+  pharmacyCounty  String?
+  pharmacySentAt  DateTime?
+  pharmacySentBy  String?
 }
 
 model MedicalCertificate {

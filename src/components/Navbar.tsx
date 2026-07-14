@@ -134,7 +134,7 @@ const Navbar = () => {
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
-  const bookHref = isPatient() ? '/doctors' : getLoginUrl(BOOKING_APPOINTMENTS_PATH, 'book');
+  const bookHref = isPatient() ? '/book' : getLoginUrl('/book', 'book');
 
   useEffect(() => {
     let cancelled = false;
@@ -325,7 +325,7 @@ const Navbar = () => {
             </div>
 
             <Link
-              href="/doctors"
+              href="/book"
               className="px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap"
             >
               Find a GP

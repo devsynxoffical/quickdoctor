@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ArrowRight, CheckCircle2, ChevronDown, Clock, ShieldCheck, Users } from "lucide-react";
+import PharmacyPicker from "@/components/PharmacyPicker";
+import { resolvePharmacyDisplay } from "@/lib/pharmacies";
 
 const AccordionItem = ({ question, answer }: { question: string; answer: string }) => {
   const [open, setOpen] = useState(false);
@@ -212,7 +214,9 @@ export default function TravelVaccinesAntiMalariaPage() {
   const [ongoingIllness, setOngoingIllness] = useState("");
   const [regularMedication, setRegularMedication] = useState("");
   const [allergies, setAllergies] = useState("");
-  const [preferredPharmacy, setPreferredPharmacy] = useState("");
+  const [preferredPharmacyId, setPreferredPharmacyId] = useState("");
+  const [customPharmacy, setCustomPharmacy] = useState("");
+  const preferredPharmacy = resolvePharmacyDisplay(preferredPharmacyId, customPharmacy);
   const [contactNumber, setContactNumber] = useState("");
   const [consentDoctorReview, setConsentDoctorReview] = useState(false);
   const [confirmAccuracy, setConfirmAccuracy] = useState(false);
@@ -273,13 +277,7 @@ export default function TravelVaccinesAntiMalariaPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       <Navbar />
-      <div className="pt-24 bg-primary/5 border-y border-primary/10 py-3 px-6 text-center">
-        <p className="text-sm font-bold text-primary">
-          A healthier year starts now. Check your BMI and access medical weight care from EUR50.
-        </p>
-      </div>
-
-      <main>
+<main>
         <section className="py-16">
           <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -815,15 +813,15 @@ export default function TravelVaccinesAntiMalariaPage() {
 
                 {currentStep === 5 && (
                   <>
-                    <div>
-                      <p className="font-bold text-dark-slate dark:text-white">1. Enter your preferred pharmacy/town</p>
-                      <input
-                        value={preferredPharmacy}
-                        onChange={(e) => setPreferredPharmacy(e.target.value)}
-                        placeholder="Pharmacy name or town"
-                        className="mt-3 w-full max-w-[28rem] px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent"
-                      />
-                    </div>
+                    <PharmacyPicker
+                      value={preferredPharmacyId}
+                      onChange={setPreferredPharmacyId}
+                      customName={customPharmacy}
+                      onCustomNameChange={setCustomPharmacy}
+                      required
+                      label="Preferred pharmacy"
+                      className="max-w-[28rem] [&_select]:rounded-lg [&_select]:border [&_select]:border-slate-300 [&_select]:bg-transparent [&_input]:rounded-lg [&_input]:border [&_input]:border-slate-300 [&_input]:bg-transparent"
+                    />
                     <div>
                       <p className="font-bold text-dark-slate dark:text-white">2. Contact number for pharmacy follow-up</p>
                       <input

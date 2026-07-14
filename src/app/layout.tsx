@@ -12,7 +12,37 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "QuickDoctor | 24/7 Digital Healthcare & Prescriptions",
-  description: "Ireland's leading telemedicine platform. Consult with certified GPs, receive digital prescriptions and sick certificates instantly from home.",
+  description:
+    "Ireland's leading telemedicine platform. Consult with certified GPs, receive digital prescriptions and sick certificates instantly from home.",
+  applicationName: "QuickDoctor",
+  metadataBase: new URL("https://quickdoctor.ie"),
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/android-chrome-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
+  },
+  manifest: "/site.webmanifest",
+  openGraph: {
+    title: "QuickDoctor | 24/7 Digital Healthcare",
+    description: "Irish-registered online GP consultations, prescriptions, and medical certificates.",
+    url: "https://quickdoctor.ie",
+    siteName: "QuickDoctor",
+    images: [{ url: "/logo.png", width: 2000, height: 2000, alt: "QuickDoctor" }],
+    locale: "en_IE",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "QuickDoctor",
+    description: "Irish-registered online GP consultations, prescriptions, and medical certificates.",
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({

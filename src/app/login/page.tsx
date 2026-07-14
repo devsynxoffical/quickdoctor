@@ -4,9 +4,10 @@ import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Stethoscope, Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import Logo from '@/components/Logo';
 import { authApi } from '@/lib/api';
 import {
   getRegisterUrl,
@@ -73,8 +74,8 @@ function LoginForm() {
         animate={{ opacity: 1, scale: 1 }}
         className="glass rounded-[40px] p-8 md:p-12 medical-shadow text-center"
       >
-        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Stethoscope className="text-primary w-8 h-8" />
+        <div className="flex justify-center mb-6">
+          <Logo href="/" size="lg" showText={false} />
         </div>
 
         <h2 className="text-3xl font-bold mb-2">Welcome Back</h2>

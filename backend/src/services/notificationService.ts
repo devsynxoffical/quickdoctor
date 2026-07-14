@@ -5,6 +5,7 @@ import {
   bookingConfirmedEmail,
   doctorNewBookingEmail,
   prescriptionIssuedEmail,
+  prescriptionSentToPharmacyEmail,
   certificateIssuedEmail,
   serviceOrderConfirmedEmail,
   doctorServiceRequestEmail,
@@ -202,16 +203,47 @@ export async function notifyPrescriptionIssued(patientUserId: string, appointmen
   await createNotification({
     userId: patientUserId,
     type: 'PRESCRIPTION_ISSUED',
-    title: 'New prescription available',
-    body: 'Your doctor has issued a prescription. View it in your medical records.',
+    title: 'Prescription issued',
+    body: 'Your doctor has issued a prescription. Details will be sent securely to your pharmacy — you can track status in Medical records.',
     link: '/dashboard/records',
     email: {
       to: prescription.patient.user.email,
-      subject: 'New prescription — QuickDoctor',
+      subject: 'Prescription issued — QuickDoctor',
       html: prescriptionIssuedEmail({
         patientFirstName: prescription.patient.firstName,
         doctorName,
-        medications: prescription.medications,
+        recordsUrl: `${base}/dashboard/records`,
+      }),
+    },
+  });
+}
+
+export async function notifyPrescriptionSentToPharmacy(prescriptionId: string) {
+  const prescription = await prisma.prescription.findUnique({
+    where: { id: prescriptionId },
+    include: {
+      patient: { include: { user: true } },
+    },
+  });
+
+  if (!prescription?.patient?.user) return;
+
+  const pharmacyLabel = prescription.pharmacyName?.trim() || 'your pharmacy';
+  const base = frontendBase();
+  const body = `Your prescription has been sent to ${pharmacyLabel}.`;
+
+  await createNotification({
+    userId: prescription.patient.user.id,
+    type: 'PRESCRIPTION_SENT_TO_PHARMACY',
+    title: 'Prescription sent to pharmacy',
+    body,
+    link: '/dashboard/records',
+    email: {
+      to: prescription.patient.user.email,
+      subject: 'Prescription sent to pharmacy — QuickDoctor',
+      html: prescriptionSentToPharmacyEmail({
+        patientFirstName: prescription.patient.firstName,
+        pharmacyName: pharmacyLabel,
         recordsUrl: `${base}/dashboard/records`,
       }),
     },

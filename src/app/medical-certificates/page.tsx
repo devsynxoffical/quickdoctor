@@ -39,7 +39,7 @@ const initialForm: FormState = {
   reason: "",
   otherReason: "",
   timeline: "",
-  fromDate: "2026-04-21",
+  fromDate: "",
   toDate: "",
   phone: "",
 };
@@ -77,6 +77,15 @@ export default function MedicalCertificatesPage() {
     if (!form.fromDate) e.fromDate = "From date is required.";
     if (!form.toDate) e.toDate = "To date is required.";
     if (!form.phone.trim()) e.phone = "Phone number is required.";
+    if (form.fromDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const from = new Date(form.fromDate);
+      from.setHours(0, 0, 0, 0);
+      if (from < today) {
+        e.fromDate = "Backdated certificates cannot be requested online. From date cannot be in the past.";
+      }
+    }
     if (form.fromDate && form.toDate) {
       const from = new Date(form.fromDate);
       const to = new Date(form.toDate);
@@ -314,12 +323,24 @@ export default function MedicalCertificatesPage() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelClass}>From</label>
-                      <input type="date" className={inputBaseClass} value={form.fromDate} onChange={(e) => setForm({ ...form, fromDate: e.target.value })} />
+                      <input
+                        type="date"
+                        min={new Date().toISOString().slice(0, 10)}
+                        className={inputBaseClass}
+                        value={form.fromDate}
+                        onChange={(e) => setForm({ ...form, fromDate: e.target.value })}
+                      />
                       {submitted && errors.fromDate && <p className="text-xs text-red-600 mt-1">{errors.fromDate}</p>}
                     </div>
                     <div>
                       <label className={labelClass}>To</label>
-                      <input type="date" className={inputBaseClass} value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} />
+                      <input
+                        type="date"
+                        min={form.fromDate || new Date().toISOString().slice(0, 10)}
+                        className={inputBaseClass}
+                        value={form.toDate}
+                        onChange={(e) => setForm({ ...form, toDate: e.target.value })}
+                      />
                       {submitted && errors.toDate && <p className="text-xs text-red-600 mt-1">{errors.toDate}</p>}
                     </div>
                   </div>

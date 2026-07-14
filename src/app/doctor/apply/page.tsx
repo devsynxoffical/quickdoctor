@@ -6,7 +6,8 @@ import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { doctorApplyApi, specialtyApi, type SpecialtyCategory } from '@/lib/api';
-import { Stethoscope, ArrowRight, CheckCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function DoctorApplyPage() {
   const [categories, setCategories] = useState<SpecialtyCategory[]>([]);
@@ -84,13 +85,9 @@ export default function DoctorApplyPage() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-2xl mx-auto glass rounded-[40px] p-8 md:p-12 medical-shadow"
         >
-          <motion.div
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            className="w-14 h-14 bg-secondary/10 rounded-2xl flex items-center justify-center mb-6"
-          >
-            <Stethoscope className="w-7 h-7 text-secondary" />
-          </motion.div>
+          <div className="mb-6">
+            <Logo href={null} size="lg" />
+          </div>
           <h1 className="text-3xl font-black mb-2">Apply as a doctor</h1>
           <p className="text-slate-500 mb-8 text-sm">
             Choose your specialty. After admin approval you can set your fees and availability.

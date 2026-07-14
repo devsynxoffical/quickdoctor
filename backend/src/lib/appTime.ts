@@ -42,6 +42,11 @@ export function formatAppDate(value: DateInput): string {
   });
 }
 
+/** Calendar date string (YYYY-MM-DD) in APP_TIMEZONE. */
+export function appTodayDateString(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: APP_TIMEZONE });
+}
+
 export function formatAppDateLong(value: DateInput): string {
   return toDate(value).toLocaleDateString('en-GB', {
     timeZone: APP_TIMEZONE,

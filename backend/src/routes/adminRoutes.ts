@@ -8,6 +8,7 @@ import {
   listAllAppointments,
   listAllPayments,
   adminCreateAppointment,
+  assignAppointmentDoctor,
 } from '../controllers/adminController';
 import {
   approveApplication,
@@ -29,6 +30,7 @@ import {
 import {
   getAdminPrescriptions,
   getAdminCertificates,
+  markPrescriptionSentToPharmacy,
 } from '../controllers/medicalController';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -42,9 +44,11 @@ router.patch('/doctors/:doctorId', ...admin, updateDoctor);
 router.get('/stats', ...admin, getSystemStats);
 router.get('/appointments', ...admin, listAllAppointments);
 router.post('/appointments', ...admin, adminCreateAppointment);
+router.patch('/appointments/:id/assign', ...admin, assignAppointmentDoctor);
 router.get('/payments', ...admin, listAllPayments);
 router.get('/prescriptions', ...admin, getAdminPrescriptions);
 router.get('/certificates', ...admin, getAdminCertificates);
+router.post('/prescriptions/:id/send-to-pharmacy', ...admin, markPrescriptionSentToPharmacy);
 
 router.get('/applications', ...admin, listApplications);
 router.get('/applications/:id', ...admin, getApplication);

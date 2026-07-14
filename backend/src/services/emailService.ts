@@ -166,15 +166,27 @@ export function doctorNewBookingEmail(params: {
 export function prescriptionIssuedEmail(params: {
   patientFirstName: string;
   doctorName: string;
-  medications: string;
   recordsUrl: string;
 }) {
   return emailLayout(
-    'New prescription available',
+    'Prescription issued',
     `<p>Hi ${params.patientFirstName},</p>
-     <p><strong>${params.doctorName}</strong> has issued a new prescription for you.</p>
-     <p style="background:#f8fafc;padding:12px;border-radius:8px"><strong>Medications:</strong> ${params.medications}</p>
-     <p><a href="${params.recordsUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View prescription</a></p>`
+     <p><strong>${params.doctorName}</strong> has issued a prescription for you.</p>
+     <p style="background:#f8fafc;padding:12px;border-radius:8px">For Irish regulatory reasons, prescription details are not shown in your account. Once your doctor or our team send it to your designated pharmacy, we will email you a confirmation.</p>
+     <p><a href="${params.recordsUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View prescription status</a></p>`
+  );
+}
+
+export function prescriptionSentToPharmacyEmail(params: {
+  patientFirstName: string;
+  pharmacyName: string;
+  recordsUrl: string;
+}) {
+  return emailLayout(
+    'Prescription sent to pharmacy',
+    `<p>Hi ${params.patientFirstName},</p>
+     <p>Your prescription has been sent to <strong>${params.pharmacyName}</strong>.</p>
+     <p><a href="${params.recordsUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View medical records</a></p>`
   );
 }
 

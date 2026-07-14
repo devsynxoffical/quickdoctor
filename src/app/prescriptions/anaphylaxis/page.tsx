@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ArrowRight, CheckCircle2, ChevronDown, Clock, ShieldCheck, Users, XCircle } from "lucide-react";
+import PharmacyPicker from "@/components/PharmacyPicker";
+import { resolvePharmacyDisplay } from "@/lib/pharmacies";
 
 const suitableItems = [
   "Are aged 17 years or older.",
@@ -80,7 +82,9 @@ export default function AnaphylaxisPage() {
   const [pregnantOrBreastfeeding, setPregnantOrBreastfeeding] = useState("");
   const [newMedicalCondition, setNewMedicalCondition] = useState("");
   const [newMedication, setNewMedication] = useState("");
-  const [pharmacyName, setPharmacyName] = useState("");
+  const [pharmacyId, setPharmacyId] = useState("");
+  const [customPharmacy, setCustomPharmacy] = useState("");
+  const pharmacyName = resolvePharmacyDisplay(pharmacyId, customPharmacy);
   const [idConfirm, setIdConfirm] = useState("");
   const [carryConfirm, setCarryConfirm] = useState("");
   const [finalAccuracyConfirm, setFinalAccuracyConfirm] = useState(false);
@@ -185,7 +189,8 @@ export default function AnaphylaxisPage() {
     setPregnantOrBreastfeeding("");
     setNewMedicalCondition("");
     setNewMedication("");
-    setPharmacyName("");
+    setPharmacyId("");
+    setCustomPharmacy("");
     setIdConfirm("");
     setCarryConfirm("");
     setFinalAccuracyConfirm(false);
@@ -195,14 +200,7 @@ export default function AnaphylaxisPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       <Navbar />
-
-      <div className="pt-24 bg-primary/5 border-y border-primary/10 py-3 px-6 text-center">
-        <p className="text-sm font-bold text-primary">
-          A healthier year starts now. Check your BMI and access medical weight care from EUR50.
-        </p>
-      </div>
-
-      <main>
+<main>
         {showQuestionnaire && (
           <section id="anaphylaxis-questionnaire" className="pt-28 pb-16">
             <div className="max-w-4xl mx-auto px-6">
@@ -527,16 +525,15 @@ export default function AnaphylaxisPage() {
 
                 {currentStep === 5 && (
                   <div className="mt-8 space-y-7">
-                    <div>
-                      <p className="font-black text-dark-slate dark:text-white">16. Preferred pharmacy name and town</p>
-                      <input
-                        type="text"
-                        value={pharmacyName}
-                        onChange={(event) => setPharmacyName(event.target.value)}
-                        placeholder="e.g. Smiths Pharmacy, Cork"
-                        className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-dark-slate outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      />
-                    </div>
+                    <PharmacyPicker
+                      value={pharmacyId}
+                      onChange={setPharmacyId}
+                      customName={customPharmacy}
+                      onCustomNameChange={setCustomPharmacy}
+                      required
+                      label="Preferred pharmacy"
+                      className="[&_select]:rounded-xl [&_select]:border [&_select]:border-slate-300 [&_select]:bg-white [&_input]:rounded-xl [&_input]:border [&_input]:border-slate-300 [&_input]:bg-white"
+                    />
                     <div>
                       <p className="font-black text-dark-slate dark:text-white">
                         17. Please confirm you have valid photo ID matching your account details.

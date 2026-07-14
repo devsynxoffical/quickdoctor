@@ -18,7 +18,7 @@ export function homePageSections(): SectionTemplate[] {
         subheadline:
           'Access expert GP consultations, prescriptions, and specialist referrals from the comfort of your home in minutes.',
         ctaLabel: 'Book an Appointment',
-        ctaHref: '/doctors',
+        ctaHref: '/book',
         secondaryCtaLabel: 'How it Works',
         secondaryCtaHref: '/contact',
         backgroundImageUrl: '',
@@ -42,7 +42,7 @@ export function homePageSections(): SectionTemplate[] {
       contentJson: {
         title: 'Available appointments',
         subtitle: 'Book a live session with our licensed General Practitioners today.',
-        viewMoreHref: '/doctors',
+        viewMoreHref: '/book',
         items: [
           { time: '09:45', date: 'Today', price: '€49', badge: 'Live' },
           { time: '10:30', date: 'Today', price: '€49', badge: '' },
@@ -64,7 +64,7 @@ export function homePageSections(): SectionTemplate[] {
             description:
               'Face-to-face appointments with Irish Medical Council registered doctors on our secure platform.',
             ctaLabel: 'Book Now',
-            ctaHref: '/doctors',
+            ctaHref: '/book',
           },
           {
             title: 'Digital Prescription',
@@ -147,7 +147,7 @@ export function homePageSections(): SectionTemplate[] {
         subtext:
           'Join thousands of patients who trust QuickDoctor for their daily healthcare needs. Available 7 days a week.',
         label: 'Book Now - €49',
-        href: '/doctors',
+        href: '/book',
       },
     },
   ];
@@ -165,7 +165,7 @@ export function getTemplateSections(def: SitePageDef): SectionTemplate[] {
         headline: def.title,
         subheadline: `Learn about ${def.title} at QuickDoctor — book online video consultations with licensed doctors.`,
         ctaLabel: 'Book a consultation',
-        ctaHref: '/doctors',
+        ctaHref: '/book',
         secondaryCtaLabel: '',
         secondaryCtaHref: '',
         backgroundImageUrl: '',
@@ -201,7 +201,7 @@ export function getTemplateSections(def: SitePageDef): SectionTemplate[] {
         text: 'Ready to speak with a doctor?',
         subtext: '',
         label: 'Find a doctor',
-        href: '/doctors',
+        href: '/book',
       },
     },
   ];

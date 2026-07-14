@@ -124,6 +124,7 @@ export type AppointmentRow = {
   serviceSlug?: string | null;
   serviceName?: string | null;
   requestPayload?: Record<string, unknown> | null;
+  needsAssignment?: boolean;
   priceCents: number;
   notes?: string;
   clinicalNotes?: string;
@@ -136,11 +137,19 @@ export type AppointmentRow = {
 
 export type PrescriptionRow = {
   id: string;
-  medications: string;
-  dosage: string;
+  /** Present for doctor/admin views; omitted/redacted for patients. */
+  medications?: string;
+  dosage?: string;
   instructions?: string | null;
   items?: PrescriptionItem[] | null;
   issuedAt: string;
+  pharmacyName?: string | null;
+  pharmacyAddress?: string | null;
+  pharmacyCounty?: string | null;
+  pharmacySentAt?: string | null;
+  pharmacySentBy?: string | null;
+  issued?: boolean;
+  sentToPharmacy?: boolean;
   appointment?: {
     id?: string;
     doctor?: {
@@ -297,6 +306,10 @@ export const publicDoctorApi = {
     fetchApi<{ slots: string[]; consultationFeeCents: number; currency: string }>(
       `/doctors/public/${id}/slots?date=${date}`
     ),
+  availableSlots: (date: string) =>
+    fetchApi<{ slots: string[]; consultationFeeCents: number; currency: string }>(
+      `/doctors/public/available-slots?date=${date}`
+    ),
 };
 
 export const paymentApi = {
@@ -315,6 +328,21 @@ export const paymentApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  autoCheckout: (data: { dateTime: string; notes?: string; couponCode?: string }) =>
+    fetchApi<{
+      checkoutUrl?: string;
+      appointmentId: string;
+      testMode?: boolean;
+      freeCheckout?: boolean;
+      devConfirmUrl?: string;
+      message?: string;
+      discountCents?: number;
+      finalAmountCents?: number;
+      maintenanceMode?: boolean;
+    }>('/payments/auto-checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   guestCheckout: async (data: {
     doctorId: string;
     dateTime: string;
@@ -329,6 +357,70 @@ export const paymentApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/payments/guest-checkout`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    const text = await response.text();
+    let body: Record<string, unknown> = {};
+    if (text) {
+      try {
+        body = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw new Error(text || 'Invalid response from server');
+      }
+    }
+
+    if (response.status === 409 && body.requiresLogin === true) {
+      return {
+        requiresLogin: true as const,
+        message: typeof body.message === 'string' ? body.message : 'Account exists',
+        appointmentId: '',
+        token: '',
+        user: { id: '', email: '', role: '' },
+      };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        typeof body.message === 'string' ? body.message : 'Something went wrong'
+      );
+    }
+
+    return body as {
+      checkoutUrl?: string;
+      appointmentId: string;
+      testMode?: boolean;
+      freeCheckout?: boolean;
+      devConfirmUrl?: string;
+      message?: string;
+      discountCents?: number;
+      finalAmountCents?: number;
+      maintenanceMode?: boolean;
+      token: string;
+      user: AuthUser;
+      requiresLogin?: boolean;
+    };
+  },
+  guestAutoCheckout: async (data: {
+    dateTime: string;
+    notes?: string;
+    couponCode?: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    dob: string;
+  }) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/payments/guest-auto-checkout`,
       {
         method: 'POST',
         headers: {
@@ -423,10 +515,21 @@ export const medicalApi = {
     patientId: string;
     items: PrescriptionItem[];
     instructions?: string;
+    pharmacyName?: string;
+    pharmacyAddress?: string;
+    pharmacyCounty?: string;
   }) =>
     fetchApi<PrescriptionRow>('/medical/prescription', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  sendToPharmacy: (
+    prescriptionId: string,
+    data?: { pharmacyName?: string; pharmacyAddress?: string; pharmacyCounty?: string }
+  ) =>
+    fetchApi<PrescriptionRow>(`/medical/prescription/${prescriptionId}/send-to-pharmacy`, {
+      method: 'POST',
+      body: JSON.stringify({ prescriptionId, ...data }),
     }),
   issueCertificate: (data: {
     appointmentId: string;
@@ -606,8 +709,21 @@ export const adminApi = {
       body: JSON.stringify(data),
     }),
   appointments: () => fetchApi<unknown[]>('/admin/appointments'),
+  assignAppointment: (appointmentId: string, doctorId: string) =>
+    fetchApi<unknown>(`/admin/appointments/${appointmentId}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ doctorId }),
+    }),
   payments: () => fetchApi<unknown[]>('/admin/payments'),
   prescriptions: () => fetchApi<PrescriptionRow[]>('/admin/prescriptions'),
+  sendPrescriptionToPharmacy: (
+    prescriptionId: string,
+    data?: { pharmacyName?: string; pharmacyAddress?: string; pharmacyCounty?: string }
+  ) =>
+    fetchApi<PrescriptionRow>(`/admin/prescriptions/${prescriptionId}/send-to-pharmacy`, {
+      method: 'POST',
+      body: JSON.stringify({ prescriptionId, ...data }),
+    }),
   certificates: () => fetchApi<MedicalCertificateRow[]>('/admin/certificates'),
   coupons: () => fetchApi<CouponRow[]>('/admin/coupons'),
   createCoupon: (data: Record<string, unknown>) =>

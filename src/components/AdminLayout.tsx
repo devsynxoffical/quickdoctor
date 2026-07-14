@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  Shield, Users, Stethoscope, Briefcase, 
+  Users, Stethoscope, Briefcase, 
   Settings, LogOut,
   ChevronRight,   BarChart3, Newspaper,
   LayoutDashboard, Menu, X, Calendar, Ticket, FileText
@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from '@/components/NotificationBell';
 import Logo from '@/components/Logo';
+import { useRouter } from 'next/navigation';
 
 const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: string, icon: any, label: string, active: boolean, onClick?: () => void }) => (
   <Link href={href} onClick={onClick}>
@@ -24,8 +25,6 @@ const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: strin
     </div>
   </Link>
 );
-
-import { useRouter } from 'next/navigation';
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -134,9 +133,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
              <NotificationBell />
              
              <div className="flex items-center gap-3 md:pl-6 md:border-l border-slate-200 dark:border-slate-800">
-                <div className="w-10 h-10 rounded-xl bg-dark-slate text-white flex items-center justify-center overflow-hidden medical-shadow shrink-0">
-                   <Shield className="w-6 h-6" />
-                </div>
+                <Logo href={null} size="sm" showText={false} />
              </div>
           </div>
         </header>

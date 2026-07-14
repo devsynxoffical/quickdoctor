@@ -10,6 +10,7 @@ type Row = {
   dateTime: string;
   status: string;
   priceCents: number;
+  needsAssignment?: boolean;
   patient?: { id: string; firstName: string; lastName: string };
   doctor?: { id: string; firstName: string; lastName: string };
   payment?: { status: string };
@@ -39,6 +40,8 @@ export default function AdminAppointmentsPage() {
   const [booking, setBooking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [assignDoctorByAppt, setAssignDoctorByAppt] = useState<Record<string, string>>({});
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   const load = () => {
     adminApi
@@ -87,11 +90,33 @@ export default function AdminAppointmentsPage() {
     }
   };
 
+  const assign = async (appointmentId: string) => {
+    const nextDoctorId = assignDoctorByAppt[appointmentId];
+    if (!nextDoctorId) {
+      alert('Select a doctor first');
+      return;
+    }
+    setAssigningId(appointmentId);
+    try {
+      await adminApi.assignAppointment(appointmentId, nextDoctorId);
+      load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Assign failed');
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const needsAssign = rows.filter((r) => r.needsAssignment);
+  const others = rows.filter((r) => !r.needsAssignment);
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div>
         <h1 className="text-4xl font-black">All appointments</h1>
-        <p className="text-slate-500 mt-2">View bookings and create confirmed appointments for patients.</p>
+        <p className="text-slate-500 mt-2">
+          View bookings, assign doctors when the system is in manual mode, and create confirmed appointments.
+        </p>
       </div>
 
       <form onSubmit={book} className="glass p-6 rounded-3xl space-y-4 max-w-3xl">
@@ -155,22 +180,75 @@ export default function AdminAppointmentsPage() {
       {loading ? (
         <p className="text-slate-400">Loading…</p>
       ) : (
-        <div className="space-y-3">
-          {rows.map((a) => (
-            <div key={a.id} className="glass p-5 rounded-2xl flex flex-wrap justify-between gap-4">
-              <div>
-                <p className="font-bold">
-                  {a.patient?.firstName} {a.patient?.lastName} → Dr. {a.doctor?.lastName}
-                </p>
-                <p className="text-sm text-slate-500">{formatAppDateTime(a.dateTime)}</p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-black uppercase">{a.status}</span>
-                <p className="font-black text-primary">€{(a.priceCents / 100).toFixed(2)}</p>
-                {a.payment && <p className="text-xs text-slate-400">{a.payment.status}</p>}
-              </div>
+        <div className="space-y-8">
+          {needsAssign.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-black text-amber-700">Needs doctor assignment ({needsAssign.length})</h2>
+              {needsAssign.map((a) => (
+                <div key={a.id} className="glass p-5 rounded-2xl space-y-3 border border-amber-200">
+                  <div className="flex flex-wrap justify-between gap-4">
+                    <div>
+                      <p className="font-bold">
+                        {a.patient?.firstName} {a.patient?.lastName}
+                        {a.doctor ? ` → Dr. ${a.doctor.lastName}` : ' → Unassigned'}
+                      </p>
+                      <p className="text-sm text-slate-500">{formatAppDateTime(a.dateTime)}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-black uppercase text-amber-700">Needs assignment</span>
+                      <p className="font-black text-primary">€{(a.priceCents / 100).toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <select
+                      value={assignDoctorByAppt[a.id] || ''}
+                      onChange={(e) =>
+                        setAssignDoctorByAppt((prev) => ({ ...prev, [a.id]: e.target.value }))
+                      }
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm min-w-[200px]"
+                    >
+                      <option value="">Assign doctor…</option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          Dr. {d.firstName} {d.lastName}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={assigningId === a.id}
+                      onClick={() => assign(a.id)}
+                      className="px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-60"
+                    >
+                      {assigningId === a.id ? 'Assigning…' : 'Assign'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          <div className="space-y-3">
+            <h2 className="text-xl font-black">All bookings</h2>
+            {others.map((a) => (
+              <div key={a.id} className="glass p-5 rounded-2xl flex flex-wrap justify-between gap-4">
+                <div>
+                  <p className="font-bold">
+                    {a.patient?.firstName} {a.patient?.lastName} → Dr. {a.doctor?.lastName || '—'}
+                  </p>
+                  <p className="text-sm text-slate-500">{formatAppDateTime(a.dateTime)}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black uppercase">{a.status}</span>
+                  <p className="font-black text-primary">€{(a.priceCents / 100).toFixed(2)}</p>
+                  {a.payment && <p className="text-xs text-slate-400">{a.payment.status}</p>}
+                </div>
+              </div>
+            ))}
+            {others.length === 0 && needsAssign.length === 0 && (
+              <p className="text-slate-500 text-sm">No appointments yet.</p>
+            )}
+          </div>
         </div>
       )}
     </motion.div>

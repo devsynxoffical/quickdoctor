@@ -44,6 +44,7 @@ export async function prepareCheckoutAppointment(input: {
   serviceSlug?: string;
   serviceName?: string;
   requestPayload?: Prisma.InputJsonValue;
+  needsAssignment?: boolean;
 }): Promise<{ appointment: Appointment; reused: boolean }> {
   const existing = await prisma.appointment.findUnique({
     where: {
@@ -72,6 +73,7 @@ export async function prepareCheckoutAppointment(input: {
         serviceSlug: input.serviceSlug,
         serviceName: input.serviceName,
         requestPayload: input.requestPayload,
+        needsAssignment: input.needsAssignment ?? false,
       },
     });
     return { appointment, reused: true };
@@ -90,6 +92,7 @@ export async function prepareCheckoutAppointment(input: {
       serviceSlug: input.serviceSlug,
       serviceName: input.serviceName,
       requestPayload: input.requestPayload,
+      needsAssignment: input.needsAssignment ?? false,
     },
   });
 

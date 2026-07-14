@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Users, FileText, Pill, 
-  Settings, LogOut, Stethoscope,
-  ChevronRight, Calendar, ClipboardList, Menu, X
+  Settings, LogOut,
+  ChevronRight, Calendar, Menu, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from '@/components/NotificationBell';
+import Logo from '@/components/Logo';
 import { doctorProfileApi } from '@/lib/api';
 
 const SidebarLink = ({ href, icon: Icon, label, active, onClick }: { href: string, icon: any, label: string, active: boolean, onClick?: () => void }) => (
@@ -79,14 +80,7 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-8 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center medical-shadow">
-              <Stethoscope className="text-white w-6 h-6" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-dark-slate dark:text-white">
-              Quick<span className="text-secondary">Doctor</span>
-            </span>
-          </Link>
+          <Logo href="/" size="sm" showText />
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-secondary">
             <X className="w-5 h-5" />
           </button>
@@ -144,9 +138,7 @@ const DoctorDashboardLayout = ({ children }: { children: React.ReactNode }) => {
              <NotificationBell />
              
              <div className="flex items-center gap-3 md:pl-6 md:border-l border-slate-200 dark:border-slate-800">
-                <div className="w-10 h-10 rounded-xl bg-secondary text-white flex items-center justify-center overflow-hidden medical-shadow shrink-0">
-                   <Stethoscope className="w-6 h-6" />
-                </div>
+                <Logo href={null} size="sm" showText={false} />
              </div>
           </div>
         </header>

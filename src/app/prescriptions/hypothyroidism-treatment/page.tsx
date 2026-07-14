@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ArrowRight, CheckCircle2, ChevronDown, Clock, ShieldCheck, Users, XCircle } from "lucide-react";
+import PharmacyPicker from "@/components/PharmacyPicker";
+import { resolvePharmacySelection } from "@/lib/pharmacies";
 
 const faqItems = [
   "Who is this service suitable for?",
@@ -80,8 +82,11 @@ export default function HypothyroidismTreatmentPage() {
   const [heartConditions, setHeartConditions] = useState("");
   const [weightChanges, setWeightChanges] = useState("");
   const [interactingSupplements, setInteractingSupplements] = useState("");
-  const [pharmacyName, setPharmacyName] = useState("");
-  const [pharmacyCounty, setPharmacyCounty] = useState("");
+  const [pharmacyId, setPharmacyId] = useState("");
+  const [customPharmacy, setCustomPharmacy] = useState("");
+  const pharmacyResolved = resolvePharmacySelection(pharmacyId, customPharmacy);
+  const pharmacyName = pharmacyResolved?.name || "";
+  const pharmacyCounty = pharmacyResolved?.county || (pharmacyId === "other" ? "Other" : "");
   const [confirmInformationTrue, setConfirmInformationTrue] = useState("");
   const [confirmOwnUseOnly, setConfirmOwnUseOnly] = useState("");
 
@@ -129,7 +134,7 @@ export default function HypothyroidismTreatmentPage() {
       (!hasOtherSymptoms || otherSymptoms.trim().length > 0) &&
       heartConditions) ||
     (currentStep === 5 && weightChanges && interactingSupplements) ||
-    (currentStep === 6 && pharmacyName.trim().length > 0 && pharmacyCounty.trim().length > 0) ||
+    (currentStep === 6 && pharmacyName.trim().length > 0) ||
     (currentStep === 7 && confirmInformationTrue && confirmOwnUseOnly);
 
   const canSubmit = currentStep === 7 && confirmInformationTrue === "Yes" && confirmOwnUseOnly === "Yes";
@@ -214,14 +219,7 @@ export default function HypothyroidismTreatmentPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       <Navbar />
-
-      <div className="pt-24 bg-primary/5 border-y border-primary/10 py-3 px-6 text-center">
-        <p className="text-sm font-bold text-primary">
-          A healthier year starts now. Check your BMI and access medical weight care from EUR50.
-        </p>
-      </div>
-
-      <main>
+<main>
         {showQuestionnaire && (
           <section id="hypothyroidism-questionnaire" className="pt-28 pb-16">
             <div className="max-w-4xl mx-auto px-6">
@@ -499,24 +497,15 @@ export default function HypothyroidismTreatmentPage() {
 
                 {currentStep === 6 && (
                   <div className="mt-8 space-y-7">
-                    <div>
-                      <p className="font-black text-dark-slate dark:text-white">1. Which pharmacy should receive your prescription?</p>
-                      <input
-                        value={pharmacyName}
-                        onChange={(event) => setPharmacyName(event.target.value)}
-                        placeholder="Pharmacy name"
-                        className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-dark-slate outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <p className="font-black text-dark-slate dark:text-white">2. Pharmacy county or location</p>
-                      <input
-                        value={pharmacyCounty}
-                        onChange={(event) => setPharmacyCounty(event.target.value)}
-                        placeholder="County / town"
-                        className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-dark-slate outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      />
-                    </div>
+                    <PharmacyPicker
+                      value={pharmacyId}
+                      onChange={setPharmacyId}
+                      customName={customPharmacy}
+                      onCustomNameChange={setCustomPharmacy}
+                      required
+                      label="Which pharmacy should receive your prescription?"
+                      className="[&_select]:rounded-xl [&_select]:border [&_select]:border-slate-300 [&_select]:bg-white [&_input]:rounded-xl [&_input]:border [&_input]:border-slate-300 [&_input]:bg-white"
+                    />
                   </div>
                 )}
 

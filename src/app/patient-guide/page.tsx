@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PolicyPageFooter from "@/components/PolicyPageFooter";
@@ -11,11 +12,8 @@ export default function PatientGuidePage() {
       <main className="pt-28 pb-16 px-4 sm:px-6" id="top">
         <div className="max-w-5xl mx-auto">
           <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8 mb-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Logo</p>
+            <div className="mb-3"><Logo href="/" size="sm" showText /></div>
             <h1 className="mt-2 text-2xl sm:text-4xl font-black text-primary">Patient Guide</h1>
-            <p className="mt-4 text-slate-700 font-semibold">
-              A healthier year starts now. Check your BMI and access medical weight care from €50.
-            </p>
             <p className="mt-4 text-sm text-slate-600">Version 4.0</p>
             <p className="text-sm text-slate-600">Effective from 04/2026</p>
           </section>
@@ -30,15 +28,6 @@ export default function PatientGuidePage() {
               <p className="mt-2">
                 Our online services are safe, discreet and convenient. If medically safe and suitable, patients will receive
                 a prescription by post that can be used in any Irish pharmacy.
-              </p>
-              <p className="mt-2">
-                All doctors who write prescriptions live and work in Ireland. Dr Sylvester Mooney is the QuickDoctor.ie
-                Medical Director. Dr Mooney is a GP with over 25 years of experience and is registered with the Irish Medical
-                Council (number 010015).
-              </p>
-              <p className="mt-2">
-                Our medical questionnaire is identified as a Class 1 medical device under Rule 11 of Annex VIII of EU
-                Regulation 2017/745 (Medical Device Regulations).
               </p>
             </div>
 
@@ -96,8 +85,8 @@ export default function PatientGuidePage() {
             <div>
               <h2 className="text-xl font-black text-primary">Feedback and Complaints</h2>
               <p className="mt-3">
-                Feedback and complaints can be made in writing to QuickDoctor Data Manager, QuickDoctor.ie, 20 Knockmeenagh
-                Road, Clondalkin, Dublin 22.
+                Feedback and complaints can be made in writing to QuickDoctor Data Manager, QuickDoctor Medical Services ltd,
+                Limerick, Ireland.
               </p>
               <p className="mt-2">
                 All complaints are acknowledged within 3 working days and a full response is usually provided within 10

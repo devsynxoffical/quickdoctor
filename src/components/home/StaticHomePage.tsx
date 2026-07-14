@@ -99,7 +99,7 @@ export default function StaticHomePage() {
               <h2 className="text-3xl md:text-4xl font-black text-primary">Available appointments</h2>
               <p className="text-slate-600 mt-2 text-sm sm:text-base">Book a live session with our licensed General Practitioners today.</p>
             </div>
-            <Link href="/doctors" className="inline-flex items-center gap-2 text-primary font-bold hover:underline">
+            <Link href="/book" className="inline-flex items-center gap-2 text-primary font-bold hover:underline">
               View more <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -113,7 +113,7 @@ export default function StaticHomePage() {
                 <p className="text-sm text-slate-500 mt-2">{item.date}</p>
                 <div className="flex items-center justify-between mt-5">
                   <p className="text-xl font-black text-primary">{item.price}</p>
-                  <Link href="/doctors" className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-black hover:bg-primary/90">Book Now</Link>
+                  <Link href="/book" className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-black hover:bg-primary/90">Book Now</Link>
                 </div>
               </div>
             ))}

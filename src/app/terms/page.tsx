@@ -1,7 +1,8 @@
+import Logo from "@/components/Logo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PolicyPageFooter from "@/components/PolicyPageFooter";
-import Link from "next/link";
+import { SITE_COMPANY_NAME, SITE_COMPANY_REG, SITE_ADDRESS, SITE_EMAIL } from "@/lib/siteContact";
 
 export default function TermsPage() {
   return (
@@ -11,11 +12,10 @@ export default function TermsPage() {
       <main className="pt-28 pb-16 px-4 sm:px-6" id="top">
         <div className="max-w-5xl mx-auto">
           <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8 mb-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Logo</p>
+            <div className="mb-3">
+              <Logo href="/" size="sm" showText />
+            </div>
             <h1 className="mt-2 text-2xl sm:text-4xl font-black text-primary">Terms and Conditions</h1>
-            <p className="mt-4 text-slate-700 font-semibold">
-              A healthier year starts now. Check your BMI and access medical weight care from €50.
-            </p>
             <p className="mt-4 text-sm text-slate-600">Version 4.0</p>
             <p className="text-sm text-slate-600">Effective from 04/2026</p>
           </section>
@@ -37,9 +37,8 @@ export default function TermsPage() {
                 agreed to use the Online Medical Consultation service.
               </p>
               <p className="mt-2">
-                “We or our” refers to QuickDoctor Ltd, incorporated in the Republic of Ireland under Company Registration
-                Number 536841, whose registered office is at QuickDoctor Limited, 20 Knockmeenagh Road, Clondalkin, Dublin
-                22, Ireland.
+                “We or our” refers to {SITE_COMPANY_NAME}, incorporated in the Republic of Ireland under Company
+                Registration Number {SITE_COMPANY_REG}, whose registered office is at {SITE_ADDRESS}.
               </p>
               <p className="mt-2">
                 “Website or Site” means the linked pages of QuickDoctor.ie that allow an online consultation to be performed
@@ -59,7 +58,7 @@ export default function TermsPage() {
               <h2 className="text-xl font-black text-primary">Declaration</h2>
               <p className="mt-3">
                 By agreeing to these Terms and Conditions and using the site, you declare that you wish to take part in the
-                online medical consultation service operated by QuickDoctor Ltd through the QuickDoctor.ie website.
+                online medical consultation service operated by {SITE_COMPANY_NAME} through the QuickDoctor.ie website.
               </p>
               <ul className="mt-3 list-disc pl-6 space-y-2">
                 <li>
@@ -105,24 +104,12 @@ export default function TermsPage() {
                   patient leaflet, and follow dispensing pharmacist advice.
                 </li>
                 <li>
-                  Prescriptions are issued entirely at the discretion of the doctor. QuickDoctor Ltd cannot guarantee that a
-                  consultation will result in a prescription being issued.
+                  Prescriptions are issued entirely at the discretion of the doctor. {SITE_COMPANY_NAME} cannot guarantee that
+                  a consultation will result in a prescription being issued.
                 </li>
                 <li>
                   If any terms are held invalid or unenforceable, the validity and enforceability of the remaining provisions
                   is unaffected.
-                </li>
-                <li>
-                  You consent to your health and medical history being viewed and exchanged by QuickDoctor Ltd employees and
-                  doctors working on our behalf for the purpose of medical consultation, including electronically.
-                </li>
-                <li>
-                  Online consultations are handled by a doctor as soon as possible. QuickDoctor.ie relies on third-party
-                  networks and technology and cannot guarantee delivery timing in all circumstances.
-                </li>
-                <li>
-                  Healthcare Plan benefits expire 12 months from purchase and must be used within that period. Unused benefits
-                  are forfeited.
                 </li>
               </ul>
             </div>
@@ -147,8 +134,8 @@ export default function TermsPage() {
               <p className="mt-2">
                 Refunds, where applicable, are made only to the original card and typically take 1 to 10 working days.
                 Rescheduling requests can be made by emailing{" "}
-                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  info@quickdoctor.ie
+                <a href={`mailto:${SITE_EMAIL}`} className="text-primary font-semibold hover:underline">
+                  {SITE_EMAIL}
                 </a>
                 .
               </p>
@@ -169,48 +156,13 @@ export default function TermsPage() {
                 If further medical information is requested and not provided within 3 days (or incorrect/insufficient
                 information is supplied), no refund is permitted.
               </p>
-
-              <h3 className="mt-5 text-lg font-bold text-primary">Home Health Test Kits</h3>
-              <p className="mt-2">
-                You may cancel and request a refund within 14 days of receiving the product by writing to{" "}
-                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  info@quickdoctor.ie
-                </a>
-                .
-              </p>
-              <p className="mt-2">
-                For hygiene and health protection reasons, opened or unsealed kits are not eligible for cancellation or refund.
-                Personalized or rapidly expiring products are also excluded.
-              </p>
-              <p className="mt-2">
-                Returned kits must be unopened and untampered with and sent back within 14 days from notifying us. A deduction
-                of 50% of RRP may apply to cover kit costs that cannot be recovered.
-              </p>
-              <p className="mt-2">
-                Kits are generally shipped within 24 hours and usually delivered within 7 days. If not received within 30
-                days, you may be entitled to a refund.
-              </p>
-
-              <h3 className="mt-5 text-lg font-bold text-primary">Healthcare Plans</h3>
-              <p className="mt-2">
-                You may cancel your Healthcare Plan and receive a full refund within 14 days of purchase by emailing{" "}
-                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  info@quickdoctor.ie
-                </a>
-                .
-              </p>
-              <p className="mt-2">
-                If services have been used during this period, standard rates may be charged and deducted from your payment
-                method.
-              </p>
-              <p className="mt-2">After the 14-day period, Healthcare Plan cancellation is no longer possible.</p>
             </div>
 
             <div>
               <h2 className="text-xl font-black text-primary">Disclaimer</h2>
               <p className="mt-3">
-                QuickDoctor Ltd has taken care in preparing website content. To the fullest extent permitted by law,
-                QuickDoctor Ltd disclaims all warranties of any kind with respect to website content.
+                {SITE_COMPANY_NAME} has taken care in preparing website content. To the fullest extent permitted by law,{" "}
+                {SITE_COMPANY_NAME} disclaims all warranties of any kind with respect to website content.
               </p>
             </div>
 
@@ -233,8 +185,8 @@ export default function TermsPage() {
             <div>
               <h2 className="text-xl font-black text-primary">Exclusive Jurisdiction of the Irish Courts</h2>
               <p className="mt-3">
-                The site is created and controlled by QuickDoctor Ltd in Ireland. These Terms are governed by and construed in
-                accordance with Irish law, and you submit to the exclusive jurisdiction of the Irish courts.
+                The site is created and controlled by {SITE_COMPANY_NAME} in Ireland. These Terms are governed by and construed
+                in accordance with Irish law, and you submit to the exclusive jurisdiction of the Irish courts.
               </p>
             </div>
           </section>

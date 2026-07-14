@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PolicyPageFooter from "@/components/PolicyPageFooter";
@@ -11,11 +12,8 @@ export default function RefundPolicyPage() {
       <main className="pt-28 pb-16 px-4 sm:px-6" id="top">
         <div className="max-w-5xl mx-auto">
           <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8 mb-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Logo</p>
+            <div className="mb-3"><Logo href="/" size="sm" showText /></div>
             <h1 className="mt-2 text-2xl sm:text-4xl font-black text-primary">Refund Policy</h1>
-            <p className="mt-4 text-slate-700 font-semibold">
-              A healthier year starts now. Check your BMI and access medical weight care from €50.
-            </p>
             <p className="mt-4 text-sm text-slate-600">Version 4.0</p>
             <p className="text-sm text-slate-600">Effective from 04/2026</p>
           </section>

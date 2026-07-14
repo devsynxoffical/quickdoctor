@@ -158,7 +158,7 @@ export default function HomeCmsRenderer({ page }: { page: CmsPage }) {
                       <div className="flex items-center justify-between mt-5">
                         <p className="text-xl font-black text-primary">{item.price}</p>
                         <Link
-                          href="/doctors"
+                          href="/book"
                           className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-black hover:bg-primary/90"
                         >
                           Book Now

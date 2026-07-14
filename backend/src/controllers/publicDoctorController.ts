@@ -166,3 +166,74 @@ export const getDoctorSlots = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ message: getPrismaErrorMessage(error) });
   }
 };
+
+/** Union of open video slots across consultation-capable doctors (no patient doctor picker). */
+export const getAvailableVideoSlots = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const dateStr = req.query.date as string;
+    if (!dateStr) {
+      res.status(400).json({ message: 'date query required (YYYY-MM-DD)' });
+      return;
+    }
+
+    const doctors = await prisma.doctor.findMany({
+      where: {
+        status: 'APPROVED',
+        profileComplete: true,
+        offersVideoConsultation: true,
+        user: { isActive: true },
+      },
+      include: { availability: true },
+      orderBy: { consultationFeeCents: 'asc' },
+      take: 30,
+    });
+
+    if (doctors.length === 0) {
+      res.json({ date: dateStr, consultationFeeCents: 4900, currency: 'EUR', slots: [] });
+      return;
+    }
+
+    const dayOfWeek = bookingDayOfWeek(dateStr);
+    const startOfDay = startOfAppDay(dateStr);
+    const endOfDay = endOfAppDay(dateStr);
+    const slotSet = new Set<string>();
+    let minFee = doctors[0].consultationFeeCents;
+
+    for (const doctor of doctors) {
+      minFee = Math.min(minFee, doctor.consultationFeeCents);
+      const dayAvailability = doctor.availability.find((a) => a.dayOfWeek === dayOfWeek);
+      if (!dayAvailability) continue;
+
+      const booked = await prisma.appointment.findMany({
+        where: {
+          doctorId: doctor.id,
+          dateTime: { gte: startOfDay, lte: endOfDay },
+          status: { in: SLOT_OCCUPIED_STATUSES },
+        },
+        select: { dateTime: true },
+      });
+
+      const slots = generateSlotsForDay(
+        {
+          dayOfWeek: dayAvailability.dayOfWeek,
+          startTime: dayAvailability.startTime,
+          endTime: dayAvailability.endTime,
+          slotMinutes: dayAvailability.slotMinutes,
+        },
+        dateStr,
+        booked.map((b) => b.dateTime)
+      );
+      for (const s of slots) slotSet.add(s);
+    }
+
+    const slots = Array.from(slotSet).sort();
+    res.json({
+      date: dateStr,
+      consultationFeeCents: minFee,
+      currency: doctors[0].currency || 'EUR',
+      slots,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};

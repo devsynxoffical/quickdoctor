@@ -33,7 +33,7 @@ export function defaultSection(type: string, sortOrder: number): SectionDraft {
           headline: '',
           subheadline: '',
           ctaLabel: 'Learn more',
-          ctaHref: '/doctors',
+          ctaHref: '/book',
           secondaryCtaLabel: '',
           secondaryCtaHref: '',
           backgroundImageUrl: '',
@@ -54,7 +54,7 @@ export function defaultSection(type: string, sortOrder: number): SectionDraft {
         contentJson: {
           title: 'Available appointments',
           subtitle: '',
-          viewMoreHref: '/doctors',
+          viewMoreHref: '/book',
           items: [{ time: '09:00', date: 'Today', price: '€49', badge: '' }],
         },
       };
@@ -83,7 +83,7 @@ export function defaultSection(type: string, sortOrder: number): SectionDraft {
       return {
         type: 'CTA',
         sortOrder,
-        contentJson: { text: '', subtext: '', label: 'Get started', href: '/doctors' },
+        contentJson: { text: '', subtext: '', label: 'Get started', href: '/book' },
       };
     case 'FAQ':
       return {
