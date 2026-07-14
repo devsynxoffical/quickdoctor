@@ -46,8 +46,8 @@ const ContactPage = () => {
 
                <div className="space-y-8">
                   {[
-                    { icon: Phone, label: 'Call Us', value: '+353 (0) 1 123 4567', desc: 'Mon-Sun, 24/7 Availability' },
-                    { icon: Mail, label: 'Email Support', value: 'support@quickdoctor.ie', desc: 'Responses within 1 hour' },
+                    { icon: Phone, label: 'Call Us', value: '+353 83 413 6053', desc: 'Mon-Sun, 24/7 Availability' },
+                    { icon: Mail, label: 'Email Support', value: 'info@quickdoctor.ie', desc: 'Responses within 1 hour' },
                     { icon: MapPin, label: 'Headquarters', value: 'Dublin, Republic of Ireland', desc: 'Secure Data Center' },
                   ].map((item, i) => (
                     <motion.div 

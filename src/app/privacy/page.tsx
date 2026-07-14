@@ -32,8 +32,8 @@ export default function PrivacyPage() {
               </p>
               <p className="mt-2">
                 Email:{" "}
-                <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  support@quickdoctor.ie
+                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                  info@quickdoctor.ie
                 </a>
               </p>
               <p className="mt-3">
@@ -188,8 +188,8 @@ export default function PrivacyPage() {
                 If no medical services were used, account deletion permanently removes your account data. If you have had a
                 consultation, the account is deactivated and records are retained for the minimum retention period. To
                 reactivate, contact support at{" "}
-                <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  support@quickdoctor.ie
+                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                  info@quickdoctor.ie
                 </a>
                 .
               </p>
@@ -207,8 +207,8 @@ export default function PrivacyPage() {
               <h3 className="text-lg font-black text-primary">How to Contact QuickDoctor with Questions</h3>
               <p className="mt-2">
                 The data controller is QuickDoctor Ltd. Contact by email at{" "}
-                <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  support@quickdoctor.ie
+                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                  info@quickdoctor.ie
                 </a>{" "}
                 (subject: FAO DPO), or by post at:
               </p>

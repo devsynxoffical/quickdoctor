@@ -308,10 +308,10 @@ export default function PatientDashboardOverview() {
                   Contact our support team for booking, billing, or account questions.
                 </p>
                 <a
-                  href="mailto:support@quickdoctor.ie"
+                  href="mailto:info@quickdoctor.ie"
                   className="w-full py-4 bg-primary rounded-2xl text-sm font-bold medical-shadow hover:opacity-90 transition-all block text-center"
                 >
-                  support@quickdoctor.ie
+                  info@quickdoctor.ie
                 </a>
               </div>
               <div className="absolute -right-4 -bottom-4 opacity-10">

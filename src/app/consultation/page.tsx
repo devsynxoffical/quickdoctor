@@ -1,34 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, ShieldCheck, UserCheck, Video } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { cmsApi } from "@/lib/api";
 
 const consultationCards = [
   {
     title: "Female Doctor Consultation",
     description: "Private online GP appointments with experienced female doctors.",
     href: "/consultation/female-doctor",
+    slug: "consultation-female-doctor",
     badge: "Most Requested",
   },
   {
     title: "Male Doctor Consultation",
     description: "Comfortable online consultations with qualified male doctors.",
     href: "/consultation/male-doctor",
+    slug: "consultation-male-doctor",
     badge: "Available Today",
   },
   {
     title: "Consultation in Portuguese",
     description: "Book a video consultation with Portuguese-speaking clinicians.",
     href: "/consultation/portuguese",
+    slug: "consultation-portuguese",
     badge: "Language Support",
   },
   {
     title: "Consultation in Spanish",
     description: "Access Spanish-language online GP consultations from home.",
     href: "/consultation/spanish",
+    slug: "consultation-spanish",
     badge: "Language Support",
   },
 ];
@@ -52,6 +58,32 @@ const reassurancePoints = [
 ];
 
 export default function ConsultationLandingPage() {
+  const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      consultationCards.map(async (card) => {
+        try {
+          const avail = await cmsApi.pageAvailability(card.slug);
+          return avail.status === "DRAFT" ? card.slug : null;
+        } catch {
+          return null;
+        }
+      })
+    ).then((drafts) => {
+      if (!cancelled) setHiddenSlugs(new Set(drafts.filter(Boolean) as string[]));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleCards = useMemo(
+    () => consultationCards.filter((card) => !hiddenSlugs.has(card.slug)),
+    [hiddenSlugs]
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
@@ -74,7 +106,7 @@ export default function ConsultationLandingPage() {
             </motion.div>
 
             <div className="mt-12 grid md:grid-cols-2 gap-6">
-              {consultationCards.map((item) => (
+              {visibleCards.map((item) => (
                 <motion.div
                   key={item.href}
                   initial={{ opacity: 0, y: 16 }}
@@ -118,4 +150,3 @@ export default function ConsultationLandingPage() {
     </div>
   );
 }
-

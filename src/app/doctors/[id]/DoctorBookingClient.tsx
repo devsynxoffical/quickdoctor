@@ -68,7 +68,8 @@ function DoctorBookingContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = params.id as string;
+  // Prefer query id so /doctors/book?id= works with static export for any doctor.
+  const id = (searchParams.get('id') || (params.id as string) || '').trim();
 
   const [doctor, setDoctor] = useState<(PublicDoctor & { bio?: string; availability?: DoctorAvailability[] }) | null>(
     null
@@ -88,6 +89,13 @@ function DoctorBookingContent() {
   const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestFirstName, setGuestFirstName] = useState('');
+  const [guestLastName, setGuestLastName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestDob, setGuestDob] = useState('');
+  const loggedInAsPatient =
+    Boolean(getToken()) && normalizeRole(getStoredUser()?.role) === 'PATIENT';
 
   useEffect(() => {
     const role = normalizeRole(getStoredUser()?.role);
@@ -97,6 +105,11 @@ function DoctorBookingContent() {
   }, []);
 
   useEffect(() => {
+    if (!id) {
+      setError('Missing doctor. Please pick a doctor from the list.');
+      setLoading(false);
+      return;
+    }
     publicDoctorApi
       .get(id)
       .then((d) => setDoctor(d as PublicDoctor & { availability?: DoctorAvailability[] }))
@@ -233,20 +246,51 @@ function DoctorBookingContent() {
       );
       return;
     }
+
+    const bookPath = `/doctors/book?id=${encodeURIComponent(id)}&date=${date}&slot=${encodeURIComponent(selectedSlot)}`;
     const token = getToken();
-    if (!token) {
-      router.push(`/login?redirect=${encodeURIComponent(`/doctors/${id}?date=${date}&slot=${selectedSlot}`)}`);
-      return;
-    }
+    const role = normalizeRole(getStoredUser()?.role);
+
     setPaying(true);
     setError(null);
     try {
-      const result = await paymentApi.checkout({
-        doctorId: id,
-        dateTime: selectedSlot,
-        notes,
-        couponCode: couponPreview?.code || couponCode || undefined,
-      });
+      let result;
+
+      if (token && role === 'PATIENT') {
+        result = await paymentApi.checkout({
+          doctorId: id,
+          dateTime: selectedSlot,
+          notes,
+          couponCode: couponPreview?.code || couponCode || undefined,
+        });
+      } else {
+        if (!guestEmail.trim() || !guestFirstName.trim() || !guestLastName.trim() || !guestDob) {
+          setError('Enter your name, email, and date of birth to continue booking.');
+          setPaying(false);
+          return;
+        }
+        result = await paymentApi.guestCheckout({
+          doctorId: id,
+          dateTime: selectedSlot,
+          notes,
+          couponCode: couponPreview?.code || couponCode || undefined,
+          email: guestEmail.trim(),
+          firstName: guestFirstName.trim(),
+          lastName: guestLastName.trim(),
+          phone: guestPhone.trim() || undefined,
+          dob: guestDob,
+        });
+        if (result.requiresLogin) {
+          setError(result.message || 'An account already exists for this email. Please sign in to continue.');
+          router.push(`/login?redirect=${encodeURIComponent(bookPath)}`);
+          return;
+        }
+        if (result.token && result.user) {
+          const { saveSession } = await import('@/lib/auth');
+          saveSession(result.token, result.user as Parameters<typeof saveSession>[1]);
+        }
+      }
+
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
         return;
@@ -406,7 +450,7 @@ function DoctorBookingContent() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Link
-                  href={getLoginUrl(`/doctors/${id}?date=${date}&slot=${selectedSlot}`)}
+                  href={getLoginUrl(`/doctors/book?id=${encodeURIComponent(id)}&date=${date}&slot=${selectedSlot}`)}
                   onClick={() => clearSession()}
                   className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-black"
                 >
@@ -420,6 +464,67 @@ function DoctorBookingContent() {
           )}
 
           {error && <p className="text-sm text-red-600 font-bold">{error}</p>}
+
+          {!nonPatientRole && !loggedInAsPatient && (
+            <div className="space-y-3 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40">
+              <div>
+                <p className="font-black text-sm">Your details</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  No login needed — we create your account instantly and email a temporary password.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <input
+                  placeholder="First name"
+                  value={guestFirstName}
+                  onChange={(e) => setGuestFirstName(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+                />
+                <input
+                  placeholder="Last name"
+                  value={guestLastName}
+                  onChange={(e) => setGuestLastName(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+                />
+              </div>
+              <input
+                type="email"
+                placeholder="Email"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+              />
+              <input
+                type="tel"
+                placeholder="Phone (optional)"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value)}
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+              />
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400">Date of birth</label>
+                <input
+                  type="date"
+                  value={guestDob}
+                  onChange={(e) => setGuestDob(e.target.value)}
+                  className="mt-1 w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+                />
+              </div>
+              <p className="text-xs text-slate-500">
+                Already have an account?{' '}
+                <Link
+                  href={getLoginUrl(
+                    `/doctors/book?id=${encodeURIComponent(id)}${date ? `&date=${date}` : ''}${
+                      selectedSlot ? `&slot=${encodeURIComponent(selectedSlot)}` : ''
+                    }`
+                  )}
+                  className="text-primary font-bold hover:underline"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <label className="text-xs font-black uppercase text-slate-400 flex items-center gap-2">

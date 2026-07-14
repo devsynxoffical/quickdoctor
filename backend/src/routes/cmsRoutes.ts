@@ -14,6 +14,7 @@ import {
   adminUpsertNavigation,
   getPublicNavigation,
   getPublicPage,
+  getPageAvailability,
   getPublicSettings,
   listPublicBlogPosts,
 } from '../controllers/cmsController';
@@ -21,6 +22,7 @@ import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/pages/:slug/availability', getPageAvailability);
 router.get('/pages/:slug', getPublicPage);
 router.get('/blog', listPublicBlogPosts);
 router.get('/navigation', getPublicNavigation);

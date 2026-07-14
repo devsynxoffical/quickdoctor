@@ -89,6 +89,11 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ token, password }),
     }),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    fetchApi<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export type SpecialtyCategory = {
@@ -289,6 +294,71 @@ export const paymentApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  guestCheckout: async (data: {
+    doctorId: string;
+    dateTime: string;
+    notes?: string;
+    couponCode?: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    dob: string;
+  }) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/payments/guest-checkout`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    const text = await response.text();
+    let body: Record<string, unknown> = {};
+    if (text) {
+      try {
+        body = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw new Error(text || 'Invalid response from server');
+      }
+    }
+
+    if (response.status === 409 && body.requiresLogin === true) {
+      return {
+        requiresLogin: true as const,
+        message: typeof body.message === 'string' ? body.message : 'Account exists',
+        appointmentId: '',
+        token: '',
+        user: { id: '', email: '', role: '' },
+      };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        typeof body.message === 'string' ? body.message : 'Something went wrong'
+      );
+    }
+
+    return body as {
+      checkoutUrl?: string;
+      appointmentId: string;
+      testMode?: boolean;
+      freeCheckout?: boolean;
+      devConfirmUrl?: string;
+      message?: string;
+      discountCents?: number;
+      finalAmountCents?: number;
+      maintenanceMode?: boolean;
+      token: string;
+      user: AuthUser;
+      requiresLogin?: boolean;
+    };
+  },
   validateCoupon: (data: { code: string; amountCents: number }) =>
     fetchApi<CouponPreview>('/payments/validate-coupon', {
       method: 'POST',
@@ -381,6 +451,8 @@ export const notificationApi = {
 
 export const cmsApi = {
   getPage: (slug: string) => fetchApi<CmsPage>(`/cms/pages/${slug}`),
+  pageAvailability: (slug: string) =>
+    fetchApi<{ status: 'PUBLISHED' | 'DRAFT' | 'MISSING' }>(`/cms/pages/${slug}/availability`),
   blogPosts: () => fetchApi<CmsPage[]>('/cms/blog'),
   navigation: (location = 'header') =>
     fetchApi<{ label: string; href: string }[]>(`/cms/navigation?location=${location}`),
@@ -502,8 +574,20 @@ export const adminApi = {
     }>('/admin/stats'),
   users: () => fetchApi<unknown[]>('/admin/users'),
   doctors: () => fetchApi<unknown[]>('/admin/doctors'),
+  updatePatient: (userId: string, data: Record<string, unknown>) =>
+    fetchApi<unknown>(`/admin/patients/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  updateDoctor: (doctorId: string, data: Record<string, unknown>) =>
+    fetchApi<unknown>(`/admin/doctors/${doctorId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   appointments: () => fetchApi<unknown[]>('/admin/appointments'),
   payments: () => fetchApi<unknown[]>('/admin/payments'),
+  prescriptions: () => fetchApi<PrescriptionRow[]>('/admin/prescriptions'),
+  certificates: () => fetchApi<MedicalCertificateRow[]>('/admin/certificates'),
   coupons: () => fetchApi<CouponRow[]>('/admin/coupons'),
   createCoupon: (data: Record<string, unknown>) =>
     fetchApi<CouponRow>('/admin/coupons', {

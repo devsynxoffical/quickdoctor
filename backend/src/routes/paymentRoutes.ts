@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createCheckoutSession,
+  createGuestCheckoutSession,
   createServiceCheckout,
   devConfirmPayment,
   getCheckoutStatus,
@@ -11,8 +12,9 @@ import { authenticate, authorize } from '../middleware/auth';
 const router = Router();
 
 router.post('/checkout', authenticate, authorize(['PATIENT']), createCheckoutSession);
+router.post('/guest-checkout', createGuestCheckoutSession);
 router.post('/service-checkout', authenticate, authorize(['PATIENT']), createServiceCheckout);
-router.post('/validate-coupon', authenticate, authorize(['PATIENT']), validateCoupon);
+router.post('/validate-coupon', validateCoupon);
 router.get('/status', authenticate, authorize(['PATIENT']), getCheckoutStatus);
 router.post(
   '/dev-confirm/:appointmentId',

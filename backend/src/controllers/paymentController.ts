@@ -1,6 +1,9 @@
 import { formatAppDateTime } from '../lib/appTime';
 import { Response, Request } from 'express';
 import Stripe from 'stripe';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
@@ -10,9 +13,12 @@ import { applyCoupon, incrementCouponUsage } from '../services/couponService';
 import { findOccupiedSlotConflict, prepareCheckoutAppointment, normalizeSlotTime, SlotTakenError } from '../lib/appointmentSlots';
 import { pickServiceDoctorId, reserveAsyncReviewSlot } from '../lib/asyncServiceSlots';
 import { CERTIFICATE_PRICE_CENTS, PRESCRIPTION_REVIEW_PRICE_CENTS } from '../lib/servicePricing';
+import { sendEmail, temporaryPasswordEmail } from '../services/emailService';
+import { normalizeEmail } from '../services/otpService';
 import type { AppointmentServiceType } from '@prisma/client';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 function frontendBase() {
   const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -24,8 +30,213 @@ function getStripe() {
   return new Stripe(stripeSecret);
 }
 
+function generateTempPassword(length = 10) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.randomBytes(length);
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  return result;
+}
+
 const HOLD_MINUTES = 15;
 const STRIPE_MIN_CENTS = 50;
+
+type CheckoutResult =
+  | { ok: true; status: number; body: Record<string, unknown> }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+async function runVideoCheckout(params: {
+  patientId: string;
+  userId: string;
+  customerEmail?: string | null;
+  doctorId: string;
+  dateTime: string;
+  notes?: string;
+  couponCode?: string;
+}): Promise<CheckoutResult> {
+  const { patientId, userId, doctorId, dateTime, notes, couponCode } = params;
+
+  const doctor = await prisma.doctor.findFirst({
+    where: {
+      id: doctorId,
+      status: 'APPROVED',
+      profileComplete: true,
+      user: { isActive: true },
+    },
+  });
+
+  if (!doctor) {
+    return { ok: false, status: 404, body: { message: 'Doctor not available for booking' } };
+  }
+
+  const slot = normalizeSlotTime(dateTime);
+  if (slot <= new Date()) {
+    return { ok: false, status: 400, body: { message: 'Cannot book a past time slot' } };
+  }
+
+  const conflict = await findOccupiedSlotConflict(doctorId, slot);
+  if (conflict) {
+    return { ok: false, status: 400, body: { message: 'This time slot is no longer available' } };
+  }
+
+  let pricing;
+  try {
+    pricing = await applyCoupon(couponCode, doctor.consultationFeeCents);
+  } catch (couponError: unknown) {
+    return {
+      ok: false,
+      status: 400,
+      body: {
+        message: couponError instanceof Error ? couponError.message : 'Invalid coupon',
+      },
+    };
+  }
+
+  const originalCents = doctor.consultationFeeCents;
+  const amountCents = pricing.finalCents;
+  const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
+
+  let appointment;
+  let checkoutReused = false;
+  try {
+    const prepared = await prepareCheckoutAppointment({
+      patientId,
+      doctorId: doctor.id,
+      dateTime: slot,
+      notes,
+      priceCents: amountCents,
+      holdExpiresAt,
+    });
+    appointment = prepared.appointment;
+    checkoutReused = prepared.reused;
+  } catch (error) {
+    if (error instanceof SlotTakenError) {
+      return { ok: false, status: 400, body: { message: error.message } };
+    }
+    throw error;
+  }
+
+  const paymentData = {
+    appointmentId: appointment.id,
+    amountCents,
+    originalAmountCents: originalCents,
+    discountCents: pricing.discountCents,
+    couponId: pricing.couponId || null,
+    currency: doctor.currency,
+    status: 'PENDING' as const,
+  };
+
+  const stripe = getStripe();
+
+  const upsertPendingPayment = async (extra?: { stripeSessionId?: string }) => {
+    if (checkoutReused) {
+      return prisma.payment.upsert({
+        where: { appointmentId: appointment.id },
+        create: { ...paymentData, ...extra },
+        update: {
+          ...paymentData,
+          ...extra,
+          paidAt: null,
+          stripePaymentIntentId: null,
+        },
+      });
+    }
+    return prisma.payment.create({ data: { ...paymentData, ...extra } });
+  };
+
+  if (!stripe || amountCents < STRIPE_MIN_CENTS) {
+    const payment = await upsertPendingPayment();
+
+    if (amountCents < STRIPE_MIN_CENTS) {
+      const result = await confirmAppointmentPayment(
+        appointment.id,
+        payment.id,
+        pricing.couponId,
+        userId
+      );
+      if (!result.confirmed) {
+        return {
+          ok: false,
+          status: 409,
+          body: { message: result.message || 'This time slot is no longer available' },
+        };
+      }
+      return {
+        ok: true,
+        status: 201,
+        body: {
+          message: amountCents === 0 ? 'Booking confirmed with coupon' : 'Booking confirmed',
+          appointmentId: appointment.id,
+          freeCheckout: true,
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      body: {
+        message:
+          'Stripe is not configured. Complete booking in test mode or set STRIPE_SECRET_KEY in backend/.env.',
+        appointmentId: appointment.id,
+        testMode: true,
+        devConfirmUrl: `${frontendBase()}/dashboard/appointments?confirmDev=${appointment.id}`,
+      },
+    };
+  }
+
+  const patientUser =
+    params.customerEmail != null
+      ? { email: params.customerEmail }
+      : await prisma.user.findUnique({ where: { id: userId } });
+
+  const lineDescription = pricing.discountCents
+    ? `${formatAppDateTime(dateTime)} (coupon ${pricing.code}: -€${(pricing.discountCents / 100).toFixed(2)})`
+    : formatAppDateTime(dateTime);
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    payment_method_types: ['card'],
+    customer_email: patientUser?.email || undefined,
+    line_items: [
+      {
+        price_data: {
+          currency: doctor.currency.toLowerCase(),
+          unit_amount: amountCents,
+          product_data: {
+            name: `Video consultation with Dr. ${doctor.lastName}`,
+            description: lineDescription,
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      appointmentId: appointment.id,
+      patientId,
+      doctorId: doctor.id,
+      couponId: pricing.couponId || '',
+    },
+    success_url: `${frontendBase()}/dashboard/appointments?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${frontendBase()}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
+  });
+
+  await upsertPendingPayment({ stripeSessionId: session.id });
+
+  return {
+    ok: true,
+    status: 201,
+    body: {
+      checkoutUrl: session.url,
+      sessionId: session.id,
+      appointmentId: appointment.id,
+      discountCents: pricing.discountCents,
+      finalAmountCents: amountCents,
+    },
+  };
+}
 
 async function confirmAppointmentPayment(
   appointmentId: string,
@@ -139,169 +350,116 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const doctor = await prisma.doctor.findFirst({
-      where: {
-        id: doctorId,
-        status: 'APPROVED',
-        profileComplete: true,
-        user: { isActive: true },
-      },
+    const result = await runVideoCheckout({
+      patientId: patient.id,
+      userId: userId!,
+      doctorId,
+      dateTime,
+      notes,
+      couponCode,
     });
 
-    if (!doctor) {
-      res.status(404).json({ message: 'Doctor not available for booking' });
+    res.status(result.status).json(result.body);
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const createGuestCheckoutSession = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const maintenance = await isMaintenanceBlocking(undefined);
+    if (maintenance.blocked) {
+      res.status(503).json({ message: maintenance.message, maintenanceMode: true });
       return;
     }
 
-    const slot = normalizeSlotTime(dateTime);
-    if (slot <= new Date()) {
-      res.status(400).json({ message: 'Cannot book a past time slot' });
-      return;
-    }
+    const { doctorId, dateTime, notes, couponCode, email, firstName, lastName, phone, dob } =
+      req.body;
 
-    const conflict = await findOccupiedSlotConflict(doctorId, slot);
-
-    if (conflict) {
-      res.status(400).json({ message: 'This time slot is no longer available' });
-      return;
-    }
-
-    const originalCents = doctor.consultationFeeCents;
-    let pricing;
-    try {
-      pricing = await applyCoupon(couponCode, originalCents);
-    } catch (couponError: unknown) {
+    if (!doctorId || !dateTime || !email || !firstName || !lastName || !dob) {
       res.status(400).json({
-        message: couponError instanceof Error ? couponError.message : 'Invalid coupon',
+        message: 'doctorId, dateTime, email, firstName, lastName, and dob are required',
       });
       return;
     }
 
-    const amountCents = pricing.finalCents;
-    const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
+    const normalizedEmail = normalizeEmail(String(email));
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-    let appointment;
-    let checkoutReused = false;
-    try {
-      const prepared = await prepareCheckoutAppointment({
-        patientId: patient.id,
-        doctorId: doctor.id,
-        dateTime: slot,
-        notes,
-        priceCents: amountCents,
-        holdExpiresAt,
-      });
-      appointment = prepared.appointment;
-      checkoutReused = prepared.reused;
-    } catch (error) {
-      if (error instanceof SlotTakenError) {
-        res.status(400).json({ message: error.message });
-        return;
-      }
-      throw error;
-    }
-
-    const paymentData = {
-      appointmentId: appointment.id,
-      amountCents,
-      originalAmountCents: originalCents,
-      discountCents: pricing.discountCents,
-      couponId: pricing.couponId || null,
-      currency: doctor.currency,
-      status: 'PENDING' as const,
-    };
-
-    const stripe = getStripe();
-
-    const upsertPendingPayment = async (extra?: { stripeSessionId?: string }) => {
-      if (checkoutReused) {
-        return prisma.payment.upsert({
-          where: { appointmentId: appointment.id },
-          create: { ...paymentData, ...extra },
-          update: {
-            ...paymentData,
-            ...extra,
-            paidAt: null,
-            stripePaymentIntentId: null,
-          },
-        });
-      }
-      return prisma.payment.create({ data: { ...paymentData, ...extra } });
-    };
-
-    if (!stripe || amountCents < STRIPE_MIN_CENTS) {
-      const payment = await upsertPendingPayment();
-
-      if (amountCents < STRIPE_MIN_CENTS) {
-        const result = await confirmAppointmentPayment(
-          appointment.id,
-          payment.id,
-          pricing.couponId,
-          userId!
-        );
-        if (!result.confirmed) {
-          res.status(409).json({ message: result.message || 'This time slot is no longer available' });
-          return;
-        }
-        res.status(201).json({
-          message: amountCents === 0 ? 'Booking confirmed with coupon' : 'Booking confirmed',
-          appointmentId: appointment.id,
-          freeCheckout: true,
+    if (existingUser) {
+      if (existingUser.role === 'PATIENT' && existingUser.isActive) {
+        res.status(409).json({
+          requiresLogin: true,
+          message: 'Account exists. Please log in to continue booking.',
         });
         return;
       }
-
-      res.status(200).json({
+      res.status(400).json({
         message:
-          'Stripe is not configured. Complete booking in test mode or set STRIPE_SECRET_KEY in backend/.env.',
-        appointmentId: appointment.id,
-        testMode: true,
-        devConfirmUrl: `${frontendBase()}/dashboard/appointments?confirmDev=${appointment.id}`,
+          existingUser.role === 'PATIENT'
+            ? 'This email belongs to an inactive account. Contact support or use another email.'
+            : 'This email belongs to a doctor or admin account and cannot use guest checkout.',
       });
       return;
     }
 
-    const patientUser = await prisma.user.findUnique({ where: { id: userId! } });
+    const tempPassword = generateTempPassword(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
-    const lineDescription = pricing.discountCents
-      ? `${formatAppDateTime(dateTime)} (coupon ${pricing.code}: -€${(pricing.discountCents / 100).toFixed(2)})`
-      : formatAppDateTime(dateTime);
-
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      customer_email: patientUser?.email,
-      line_items: [
-        {
-          price_data: {
-            currency: doctor.currency.toLowerCase(),
-            unit_amount: amountCents,
-            product_data: {
-              name: `Video consultation with Dr. ${doctor.lastName}`,
-              description: lineDescription,
-            },
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: 'PATIENT',
+        isActive: true,
+        patient: {
+          create: {
+            firstName: String(firstName),
+            lastName: String(lastName),
+            dob: new Date(dob),
+            phone: phone ? String(phone) : null,
           },
-          quantity: 1,
         },
-      ],
-      metadata: {
-        appointmentId: appointment.id,
-        patientId: patient.id,
-        doctorId: doctor.id,
-        couponId: pricing.couponId || '',
       },
-      success_url: `${frontendBase()}/dashboard/appointments?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${frontendBase()}/dashboard/appointments?payment=cancelled&appointmentId=${appointment.id}`,
+      include: { patient: true, doctor: true },
     });
 
-    await upsertPendingPayment({ stripeSessionId: session.id });
+    const loginUrl = `${frontendBase()}/login`;
+    await sendEmail({
+      to: normalizedEmail,
+      subject: 'Your QuickDoctor account',
+      html: temporaryPasswordEmail({
+        firstName: String(firstName),
+        email: normalizedEmail,
+        tempPassword,
+        loginUrl,
+      }),
+    });
 
-    res.status(201).json({
-      checkoutUrl: session.url,
-      sessionId: session.id,
-      appointmentId: appointment.id,
-      discountCents: pricing.discountCents,
-      finalAmountCents: amountCents,
+    const patient = user.patient!;
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+    };
+
+    const result = await runVideoCheckout({
+      patientId: patient.id,
+      userId: user.id,
+      customerEmail: normalizedEmail,
+      doctorId,
+      dateTime,
+      notes,
+      couponCode,
+    });
+
+    res.status(result.status).json({
+      ...result.body,
+      token,
+      user: publicUser,
     });
   } catch (error: unknown) {
     res.status(500).json({ message: getPrismaErrorMessage(error) });

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   getAllUsers,
   getDoctors,
+  updatePatient,
+  updateDoctor,
   getSystemStats,
   listAllAppointments,
   listAllPayments,
@@ -24,6 +26,10 @@ import {
   updateCoupon,
   deleteCoupon,
 } from '../controllers/couponController';
+import {
+  getAdminPrescriptions,
+  getAdminCertificates,
+} from '../controllers/medicalController';
 import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
@@ -31,10 +37,14 @@ const admin = [authenticate, authorize(['ADMIN'])] as const;
 
 router.get('/users', ...admin, getAllUsers);
 router.get('/doctors', ...admin, getDoctors);
+router.patch('/patients/:userId', ...admin, updatePatient);
+router.patch('/doctors/:doctorId', ...admin, updateDoctor);
 router.get('/stats', ...admin, getSystemStats);
 router.get('/appointments', ...admin, listAllAppointments);
 router.post('/appointments', ...admin, adminCreateAppointment);
 router.get('/payments', ...admin, listAllPayments);
+router.get('/prescriptions', ...admin, getAdminPrescriptions);
+router.get('/certificates', ...admin, getAdminCertificates);
 
 router.get('/applications', ...admin, listApplications);
 router.get('/applications/:id', ...admin, getApplication);

@@ -147,8 +147,8 @@ export default function TermsPage() {
               <p className="mt-2">
                 Refunds, where applicable, are made only to the original card and typically take 1 to 10 working days.
                 Rescheduling requests can be made by emailing{" "}
-                <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  support@quickdoctor.ie
+                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                  info@quickdoctor.ie
                 </a>
                 .
               </p>
@@ -173,8 +173,8 @@ export default function TermsPage() {
               <h3 className="mt-5 text-lg font-bold text-primary">Home Health Test Kits</h3>
               <p className="mt-2">
                 You may cancel and request a refund within 14 days of receiving the product by writing to{" "}
-                <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  support@quickdoctor.ie
+                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                  info@quickdoctor.ie
                 </a>
                 .
               </p>
@@ -194,8 +194,8 @@ export default function TermsPage() {
               <h3 className="mt-5 text-lg font-bold text-primary">Healthcare Plans</h3>
               <p className="mt-2">
                 You may cancel your Healthcare Plan and receive a full refund within 14 days of purchase by emailing{" "}
-                <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                  support@quickdoctor.ie
+                <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                  info@quickdoctor.ie
                 </a>
                 .
               </p>

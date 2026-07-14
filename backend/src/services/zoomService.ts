@@ -117,7 +117,7 @@ export async function ensureZoomMeetingForAppointment(appointmentId: string) {
       type: 2,
       start_time: start,
       duration,
-      timezone: 'UTC',
+      timezone: 'Europe/Dublin',
       settings: {
         join_before_host: false,
         waiting_room: true,

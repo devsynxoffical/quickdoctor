@@ -1,6 +1,6 @@
 /** Canonical timezone for all scheduling and displayed appointment times. */
-export const APP_TIMEZONE = 'Europe/Warsaw';
-export const APP_TIMEZONE_LABEL = 'Poland time (CET/CEST)';
+export const APP_TIMEZONE = 'Europe/Dublin';
+export const APP_TIMEZONE_LABEL = 'Irish time (IST/GMT)';
 
 type DateInput = Date | string | number;
 

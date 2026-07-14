@@ -117,12 +117,20 @@ const prescriptionRouteMap: Record<string, string> = {
   "Calculate your BMI": "/prescriptions/calculate-bmi",
 };
 
+const prescriptionSlugMap: Record<string, string> = Object.fromEntries(
+  Object.entries(prescriptionRouteMap).map(([label, path]) => [
+    label,
+    path.replace(/^\//, '').replace(/\//g, '-'),
+  ])
+);
+
 const Navbar = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
-  const [visibleConsultationItems, setVisibleConsultationItems] = useState<string[]>([]);
+  const [visibleConsultationItems, setVisibleConsultationItems] = useState<string[] | null>(null);
+  const [hiddenPrescriptionItems, setHiddenPrescriptionItems] = useState<Set<string>>(new Set());
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -131,40 +139,63 @@ const Navbar = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const loadVisibleConsultations = async () => {
-      const allItems = Object.values(consultationOptions).flat();
-      const checks = await Promise.all(
-        allItems.map(async (item) => {
-          const slug = consultationSlugMap[item];
-          if (!slug) return { item, visible: true };
-          try {
-            // Public cms endpoint returns published pages only.
-            await cmsApi.getPage(slug);
-            return { item, visible: true };
-          } catch {
-            return { item, visible: false };
-          }
-        })
-      );
-
-      if (!cancelled) {
-        setVisibleConsultationItems(checks.filter((c) => c.visible).map((c) => c.item));
+    const isLiveSlug = async (slug?: string) => {
+      if (!slug) return true;
+      try {
+        const avail = await cmsApi.pageAvailability(slug);
+        // Hide only explicit drafts; MISSING keeps static pages live.
+        return avail.status !== 'DRAFT';
+      } catch {
+        return true;
       }
     };
 
-    void loadVisibleConsultations();
+    const loadVisibility = async () => {
+      const consultationItems = Object.values(consultationOptions).flat();
+      const consultationChecks = await Promise.all(
+        consultationItems.map(async (item) => ({
+          item,
+          visible: await isLiveSlug(consultationSlugMap[item]),
+        }))
+      );
+
+      const prescriptionItems = Object.values(prescriptionOptions).flat();
+      const prescriptionChecks = await Promise.all(
+        prescriptionItems.map(async (item) => ({
+          item,
+          visible: await isLiveSlug(prescriptionSlugMap[item]),
+        }))
+      );
+
+      if (cancelled) return;
+      setVisibleConsultationItems(consultationChecks.filter((c) => c.visible).map((c) => c.item));
+      setHiddenPrescriptionItems(
+        new Set(prescriptionChecks.filter((c) => !c.visible).map((c) => c.item))
+      );
+    };
+
+    void loadVisibility();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const consultationOptionsFiltered = useMemo(() => {
+  const consultationOptionsFiltered = useMemo((): Record<string, string[]> => {
+    if (!visibleConsultationItems) return consultationOptions;
     const items = consultationOptions["GENERAL CONSULTATION"].filter((item) =>
       visibleConsultationItems.includes(item)
     );
-
     return items.length ? { "GENERAL CONSULTATION": items } : {};
   }, [visibleConsultationItems]);
+
+  const prescriptionOptionsFiltered = useMemo((): Record<string, string[]> => {
+    const filtered: Record<string, string[]> = {};
+    for (const [category, items] of Object.entries(prescriptionOptions)) {
+      const live = items.filter((item) => !hiddenPrescriptionItems.has(item));
+      if (live.length) filtered[category] = live;
+    }
+    return filtered;
+  }, [hiddenPrescriptionItems]);
 
   return (
     <>
@@ -215,7 +246,7 @@ const Navbar = () => {
                           {activeSubmenu === category && (
                             <div className="absolute top-0 left-full ml-3 w-80 bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3 z-[70]">
                                 <div className="flex flex-col gap-1">
-                                  {(consultationOptionsFiltered[category as keyof typeof consultationOptionsFiltered] ?? []).map((item, idy) => (
+                                  {(consultationOptionsFiltered[category] ?? []).map((item, idy) => (
                                     <Link 
                                       key={idy}
                                       href={consultationRouteMap[item] ?? "/register"}
@@ -259,7 +290,7 @@ const Navbar = () => {
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-72 z-[60]">
                   <div className="bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3">
                     <div className="flex flex-col gap-1 relative">
-                      {Object.keys(prescriptionOptions).map((category, idx) => (
+                      {Object.keys(prescriptionOptionsFiltered).map((category, idx) => (
                         <div 
                           key={idx}
                           onMouseEnter={() => setActiveSubmenu(category)}
@@ -273,7 +304,7 @@ const Navbar = () => {
                           {activeSubmenu === category && (
                             <div className="absolute top-0 left-full ml-3 w-80 bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3 z-[70]">
                                 <div className="flex flex-col gap-1">
-                                  {prescriptionOptions[category as keyof typeof prescriptionOptions].map((item, idy) => (
+                                  {(prescriptionOptionsFiltered[category] ?? []).map((item, idy) => (
                                     <Link 
                                       key={idy}
                                       href={prescriptionRouteMap[item] ?? "/register"}
@@ -357,7 +388,7 @@ const Navbar = () => {
                            <div key={i} className="mb-4">
                               <div className="px-4 py-2 text-[10px] font-black tracking-widest text-primary uppercase">{cat}</div>
                               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden mt-2">
-                                {(consultationOptionsFiltered[cat as keyof typeof consultationOptionsFiltered] ?? []).map((item, j) => (
+                                {(consultationOptionsFiltered[cat] ?? []).map((item, j) => (
                                   <Link 
                                     key={j} 
                                     href={consultationRouteMap[item] ?? "/register"}
@@ -387,11 +418,11 @@ const Navbar = () => {
                    </button>
                    {mobileExpanded === 'prescriptions' && (
                       <div className="overflow-hidden mt-4">
-                         {Object.keys(prescriptionOptions).map((cat, i) => (
+                         {Object.keys(prescriptionOptionsFiltered).map((cat, i) => (
                            <div key={i} className="mb-4">
                               <div className="px-4 py-2 text-[10px] font-black tracking-widest text-primary uppercase">{cat}</div>
                               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden mt-2">
-                                {prescriptionOptions[cat as keyof typeof prescriptionOptions].map((item, j) => (
+                                {(prescriptionOptionsFiltered[cat] ?? []).map((item, j) => (
                                   <Link 
                                     key={j} 
                                     href={prescriptionRouteMap[item] ?? "/register"} 

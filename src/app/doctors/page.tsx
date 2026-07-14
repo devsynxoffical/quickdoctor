@@ -100,7 +100,7 @@ export default function DoctorsListPage() {
                       €{(doc.consultationFeeCents / 100).toFixed(2)}
                     </p>
                     <Link
-                      href={`/doctors/${doc.id}`}
+                      href={`/doctors/book?id=${encodeURIComponent(doc.id)}`}
                       className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm flex items-center gap-2"
                     >
                       Book <ArrowRight className="w-4 h-4" />

@@ -242,3 +242,33 @@ export const getMyCertificates = async (req: AuthRequest, res: Response): Promis
     res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
   }
 };
+
+export const getAdminPrescriptions = async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const prescriptions = await prisma.prescription.findMany({
+      include: {
+        appointment: { include: { patient: true, doctor: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+      take: 200,
+    });
+    res.status(200).json(prescriptions);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
+  }
+};
+
+export const getAdminCertificates = async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const certificates = await prisma.medicalCertificate.findMany({
+      include: {
+        appointment: { include: { patient: true, doctor: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+      take: 200,
+    });
+    res.status(200).json(certificates);
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
+  }
+};

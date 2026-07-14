@@ -4,6 +4,7 @@ import {
   login,
   forgotPassword,
   resetPassword,
+  changePassword,
   getDoctors,
   getMe,
   sendRegistrationOtpHandler,
@@ -17,6 +18,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/change-password', authenticate, changePassword);
 router.get('/me', authenticate, getMe);
 router.get('/doctors', authenticate, getDoctors);
 

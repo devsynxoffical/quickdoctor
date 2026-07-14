@@ -66,11 +66,15 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-primary shrink-0" />
-                <span>support@quickdoctor.ie</span>
+                <a href="mailto:info@quickdoctor.ie" className="hover:text-primary transition-colors">
+                  info@quickdoctor.ie
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-primary shrink-0" />
-                <span>+353 (0) 1 123 4567</span>
+                <a href="tel:+353834136053" className="hover:text-primary transition-colors">
+                  +353 83 413 6053
+                </a>
               </li>
             </ul>
           </div>

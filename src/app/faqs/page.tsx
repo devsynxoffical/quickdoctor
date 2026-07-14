@@ -11,7 +11,7 @@ const featuredFaqs = [
       "Use a stable internet connection. If using WiFi, restart your router before the consultation.",
       "Disable VPN services and reduce high-bandwidth activity (for example streaming or backups).",
       "For mobile data, a strong 3G/4G signal is typically sufficient.",
-      "If you still have issues, contact support@quickdoctor.ie for help.",
+      "If you still have issues, contact info@quickdoctor.ie for help.",
     ],
   },
   {
@@ -29,7 +29,7 @@ const featuredFaqs = [
     answer: [
       "Anyone can register for QuickDoctor services.",
       "Visit quickdoctor.ie, select Sign Up, and follow the on-screen steps.",
-      "If you have a corporate membership and need access support, contact support@quickdoctor.ie.",
+      "If you have a corporate membership and need access support, contact info@quickdoctor.ie.",
     ],
   },
   {
@@ -136,8 +136,8 @@ export default function FaqPage() {
             <p className="text-sm text-slate-600">Help Center FAQ Collection</p>
             <p className="mt-3 text-sm text-slate-600">
               Need direct help? Contact{" "}
-              <a href="mailto:support@quickdoctor.ie" className="text-primary font-semibold hover:underline">
-                support@quickdoctor.ie
+              <a href="mailto:info@quickdoctor.ie" className="text-primary font-semibold hover:underline">
+                info@quickdoctor.ie
               </a>
               .
             </p>

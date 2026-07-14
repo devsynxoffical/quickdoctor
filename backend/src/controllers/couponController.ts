@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import prisma from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
@@ -117,7 +117,7 @@ export const deleteCoupon = async (req: AuthRequest, res: Response): Promise<voi
   }
 };
 
-export const validateCoupon = async (req: AuthRequest, res: Response): Promise<void> => {
+export const validateCoupon = async (req: Request, res: Response): Promise<void> => {
   try {
     const { code, amountCents } = req.body;
     if (!code || amountCents == null) {

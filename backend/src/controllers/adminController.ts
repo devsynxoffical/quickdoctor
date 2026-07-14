@@ -1,9 +1,13 @@
 import { Response } from 'express';
+import { DoctorStatus } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import { getPrismaErrorMessage } from '../lib/prismaErrors';
 import { finalizeConfirmedAppointment } from '../services/appointmentLifecycle';
 import { findOccupiedSlotConflict, normalizeSlotTime } from '../lib/appointmentSlots';
+import { normalizeEmail } from '../services/otpService';
+
+const DOCTOR_STATUSES: DoctorStatus[] = ['APPROVED', 'SUSPENDED', 'REJECTED', 'PENDING'];
 
 export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -19,11 +23,165 @@ export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void
 export const getDoctors = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const doctors = await prisma.doctor.findMany({
-      include: { user: { select: { email: true, createdAt: true } } }
+      include: { user: { select: { email: true, isActive: true, createdAt: true } } }
     });
     res.status(200).json(doctors);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const updatePatient = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = String(req.params.userId);
+    const { email, firstName, lastName, phone, address, dob, isActive } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { patient: true },
+    });
+
+    if (!user || user.role !== 'PATIENT' || !user.patient) {
+      res.status(404).json({ message: 'Patient not found' });
+      return;
+    }
+
+    if (email !== undefined) {
+      if (typeof email !== 'string' || !email.trim()) {
+        res.status(400).json({ message: 'Valid email is required' });
+        return;
+      }
+      const normalized = normalizeEmail(email);
+      if (normalized !== user.email) {
+        const taken = await prisma.user.findUnique({ where: { email: normalized } });
+        if (taken) {
+          res.status(400).json({ message: 'Email is already in use' });
+          return;
+        }
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(email !== undefined ? { email: normalizeEmail(String(email)) } : {}),
+        ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
+        patient: {
+          update: {
+            ...(firstName !== undefined ? { firstName: String(firstName) } : {}),
+            ...(lastName !== undefined ? { lastName: String(lastName) } : {}),
+            ...(phone !== undefined ? { phone: phone ? String(phone) : null } : {}),
+            ...(address !== undefined ? { address: address ? String(address) : null } : {}),
+            ...(dob !== undefined ? { dob: new Date(dob) } : {}),
+          },
+        },
+      },
+      include: { patient: true },
+    });
+
+    res.status(200).json(updated);
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
+export const updateDoctor = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const doctorId = String(req.params.doctorId);
+    const {
+      firstName,
+      lastName,
+      specialization,
+      licenseNumber,
+      bio,
+      consultationFeeCents,
+      profileComplete,
+      email,
+      isActive,
+      status,
+    } = req.body;
+
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: doctorId },
+      include: { user: true },
+    });
+
+    if (!doctor) {
+      res.status(404).json({ message: 'Doctor not found' });
+      return;
+    }
+
+    if (status !== undefined && !DOCTOR_STATUSES.includes(status)) {
+      res.status(400).json({
+        message: 'status must be APPROVED, SUSPENDED, REJECTED, or PENDING',
+      });
+      return;
+    }
+
+    if (email !== undefined) {
+      if (typeof email !== 'string' || !email.trim()) {
+        res.status(400).json({ message: 'Valid email is required' });
+        return;
+      }
+      const normalized = normalizeEmail(email);
+      if (normalized !== doctor.user.email) {
+        const taken = await prisma.user.findUnique({ where: { email: normalized } });
+        if (taken) {
+          res.status(400).json({ message: 'Email is already in use' });
+          return;
+        }
+      }
+    }
+
+    if (licenseNumber !== undefined) {
+      const license = String(licenseNumber).trim();
+      if (!license) {
+        res.status(400).json({ message: 'licenseNumber is required' });
+        return;
+      }
+      if (license !== doctor.licenseNumber) {
+        const taken = await prisma.doctor.findUnique({ where: { licenseNumber: license } });
+        if (taken) {
+          res.status(400).json({ message: 'License number is already in use' });
+          return;
+        }
+      }
+    }
+
+    if (consultationFeeCents !== undefined) {
+      const fee = Number(consultationFeeCents);
+      if (!Number.isFinite(fee) || fee < 0) {
+        res.status(400).json({ message: 'consultationFeeCents must be a non-negative number' });
+        return;
+      }
+    }
+
+    const updated = await prisma.doctor.update({
+      where: { id: doctorId },
+      data: {
+        ...(firstName !== undefined ? { firstName: String(firstName) } : {}),
+        ...(lastName !== undefined ? { lastName: String(lastName) } : {}),
+        ...(specialization !== undefined ? { specialization: String(specialization) } : {}),
+        ...(licenseNumber !== undefined ? { licenseNumber: String(licenseNumber).trim() } : {}),
+        ...(bio !== undefined ? { bio: bio ? String(bio) : null } : {}),
+        ...(consultationFeeCents !== undefined
+          ? { consultationFeeCents: Math.floor(Number(consultationFeeCents)) }
+          : {}),
+        ...(profileComplete !== undefined ? { profileComplete: Boolean(profileComplete) } : {}),
+        ...(status !== undefined ? { status: status as DoctorStatus } : {}),
+        user: {
+          update: {
+            ...(email !== undefined ? { email: normalizeEmail(String(email)) } : {}),
+            ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
+          },
+        },
+      },
+      include: { user: { select: { email: true, isActive: true, createdAt: true } } },
+    });
+
+    res.status(200).json(updated);
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
   }
 };
 

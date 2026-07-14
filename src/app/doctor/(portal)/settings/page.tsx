@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { doctorProfileApi } from '@/lib/api';
 import { APP_TIMEZONE_LABEL } from '@/lib/appTime';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
 
 type AvailabilitySlot = {
   dayOfWeek: number;
@@ -292,6 +293,10 @@ export default function DoctorSettingsPage() {
       >
         {saving ? 'Saving…' : 'Save profile & availability'}
       </button>
+
+      <div className="glass p-6 rounded-3xl">
+        <ChangePasswordForm />
+      </div>
     </motion.div>
   );
 }

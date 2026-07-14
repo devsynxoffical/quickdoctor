@@ -4,7 +4,15 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { cmsAdminApi, type MaintenanceSettings } from "@/lib/api";
-import { Newspaper, Settings, Shield, Ticket, Wrench } from "lucide-react";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
+import { Megaphone, Newspaper, Settings, Shield, Ticket, Wrench } from "lucide-react";
+
+type AnnouncementSettings = {
+  enabled: boolean;
+  message: string;
+  linkHref: string;
+  linkLabel: string;
+};
 
 export default function AdminSettingsPage() {
   const [maintenance, setMaintenance] = useState<MaintenanceSettings>({
@@ -12,9 +20,17 @@ export default function AdminSettingsPage() {
     message: "We're performing scheduled maintenance. Booking will resume shortly.",
     allowAdminBypass: true,
   });
+  const [announcement, setAnnouncement] = useState<AnnouncementSettings>({
+    enabled: false,
+    message: "",
+    linkHref: "",
+    linkLabel: "Learn more",
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingAnnounce, setSavingAnnounce] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [announceSaved, setAnnounceSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,6 +44,16 @@ export default function AdminSettingsPage() {
             enabled: Boolean(v.enabled),
             message: v.message || maintenance.message,
             allowAdminBypass: v.allowAdminBypass !== false,
+          });
+        }
+        const aRow = rows.find((r) => r.key === "announcement");
+        if (aRow?.value) {
+          const v = aRow.value as Partial<AnnouncementSettings>;
+          setAnnouncement({
+            enabled: Boolean(v.enabled),
+            message: v.message || "",
+            linkHref: v.linkHref || "",
+            linkLabel: v.linkLabel || "Learn more",
           });
         }
       })
@@ -49,11 +75,85 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const saveAnnouncement = async () => {
+    setSavingAnnounce(true);
+    setError(null);
+    setAnnounceSaved(false);
+    try {
+      await cmsAdminApi.saveSettings([{ key: "announcement", value: announcement }]);
+      setAnnounceSaved(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSavingAnnounce(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 max-w-2xl">
       <div>
         <h1 className="text-4xl font-black">System settings</h1>
-        <p className="text-slate-500 mt-2">Manage maintenance mode, coupons, and platform configuration.</p>
+        <p className="text-slate-500 mt-2">Manage announcements, maintenance mode, coupons, and your admin password.</p>
+      </div>
+
+      <div className="glass p-6 rounded-3xl">
+        <ChangePasswordForm />
+      </div>
+
+      <div className="glass p-6 rounded-3xl space-y-5">
+        <div className="flex items-center gap-3">
+          <Megaphone className="w-6 h-6 text-primary" />
+          <div>
+            <p className="font-black">Announcement bar</p>
+            <p className="text-sm text-slate-500">Show a site-wide banner for discounts or important notices.</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : (
+          <>
+            <label className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800">
+              <span className="font-bold text-sm">Announcement enabled</span>
+              <input
+                type="checkbox"
+                checked={announcement.enabled}
+                onChange={(e) => setAnnouncement((a) => ({ ...a, enabled: e.target.checked }))}
+                className="w-5 h-5 accent-primary"
+              />
+            </label>
+            <textarea
+              value={announcement.message}
+              onChange={(e) => setAnnouncement((a) => ({ ...a, message: e.target.value }))}
+              rows={2}
+              placeholder="e.g. Spring offer — 10% off video consultations with code SPRING10"
+              className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+            />
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input
+                value={announcement.linkHref}
+                onChange={(e) => setAnnouncement((a) => ({ ...a, linkHref: e.target.value }))}
+                placeholder="Optional link (e.g. /doctors)"
+                className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+              />
+              <input
+                value={announcement.linkLabel}
+                onChange={(e) => setAnnouncement((a) => ({ ...a, linkLabel: e.target.value }))}
+                placeholder="Link label"
+                className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm"
+              />
+            </div>
+            {announceSaved && <p className="text-sm text-emerald-600 font-bold">Announcement saved.</p>}
+            <button
+              type="button"
+              onClick={saveAnnouncement}
+              disabled={savingAnnounce}
+              className="px-6 py-3 bg-primary text-white rounded-2xl font-black text-sm disabled:opacity-60"
+            >
+              {savingAnnounce ? "Saving…" : "Save announcement"}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="glass p-6 rounded-3xl space-y-5">

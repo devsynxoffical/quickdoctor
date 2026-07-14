@@ -41,6 +41,27 @@ export const getPublicPage = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+export const getPageAvailability = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const slug = String(req.params.slug);
+    const page = await prisma.cmsPage.findUnique({
+      where: { slug },
+      select: { status: true },
+    });
+
+    if (!page) {
+      res.json({ status: 'MISSING' as const });
+      return;
+    }
+
+    res.json({
+      status: page.status === 'PUBLISHED' ? ('PUBLISHED' as const) : ('DRAFT' as const),
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getPrismaErrorMessage(error) });
+  }
+};
+
 export const listPublicBlogPosts = async (_req: Request, res: Response): Promise<void> => {
   try {
     const posts = await prisma.cmsPage.findMany({

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { accountApi } from '@/lib/api';
 import { clearSession, getStoredUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -87,12 +88,10 @@ export default function PatientSettingsPage() {
               <dd className="font-black text-right uppercase text-primary">{user?.role || 'Patient'}</dd>
             </div>
           </dl>
-          <Link
-            href="/forgot-password"
-            className="inline-block text-sm font-bold text-primary hover:underline mt-2"
-          >
-            Change password
-          </Link>
+        </article>
+
+        <article className="glass p-6 rounded-3xl">
+          <ChangePasswordForm />
         </article>
 
         <article className="glass p-6 rounded-3xl space-y-4">

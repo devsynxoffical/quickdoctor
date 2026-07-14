@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Shield, Users, Stethoscope, Briefcase, 
-  Settings, LogOut, Search,
+  Settings, LogOut,
   ChevronRight,   BarChart3, Newspaper,
-  LayoutDashboard, Menu, X, Calendar, Ticket
+  LayoutDashboard, Menu, X, Calendar, Ticket, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from '@/components/NotificationBell';
@@ -88,6 +88,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <SidebarLink href="/admin/categories" icon={Briefcase} label="Specialty Categories" active={pathname === '/admin/categories'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/cms" icon={Newspaper} label="Site content" active={pathname === '/admin/blog' || pathname === '/admin/cms'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/appointments" icon={Calendar} label="Appointments" active={pathname === '/admin/appointments'} onClick={() => setIsSidebarOpen(false)} />
+          <SidebarLink href="/admin/documents" icon={FileText} label="Issued documents" active={pathname === '/admin/documents'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/payments" icon={BarChart3} label="Payments" active={pathname === '/admin/payments'} onClick={() => setIsSidebarOpen(false)} />
           <SidebarLink href="/admin/coupons" icon={Ticket} label="Coupons" active={pathname === '/admin/coupons'} onClick={() => setIsSidebarOpen(false)} />
           

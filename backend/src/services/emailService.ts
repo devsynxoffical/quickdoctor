@@ -222,6 +222,25 @@ export function passwordResetEmail(params: { resetUrl: string }) {
   );
 }
 
+export function temporaryPasswordEmail(params: {
+  firstName: string;
+  email: string;
+  tempPassword: string;
+  loginUrl: string;
+}) {
+  return emailLayout(
+    'Your QuickDoctor account',
+    `<p>Hi ${params.firstName},</p>
+     <p>We created a patient account so you can complete your booking. Use these details to sign in anytime:</p>
+     <p style="background:#f8fafc;padding:12px;border-radius:8px">
+       <strong>Email:</strong> ${params.email}<br>
+       <strong>Temporary password:</strong> ${params.tempPassword}
+     </p>
+     <p><a href="${params.loginUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Sign in</a></p>
+     <p style="color:#64748b;font-size:14px">Please change your password after signing in.</p>`
+  );
+}
+
 export function doctorRejectedEmail(params: {
   firstName: string;
   reason: string;
