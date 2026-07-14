@@ -28,18 +28,28 @@ export default function Logo({
   const s = sizes[size];
   const content = (
     <span className={`inline-flex items-center gap-2.5 group ${className}`}>
-      <Image
-        src="/logo.png"
-        alt="QuickDoctor"
-        width={s.icon}
-        height={s.icon}
-        className={`object-contain group-hover:scale-[1.03] transition-transform ${
-          variant === 'onDark' ? 'brightness-110' : ''
-        }`}
-        priority
-      />
+      <span
+        className={
+          variant === 'onDark'
+            ? 'inline-flex items-center justify-center rounded-2xl bg-white p-2 shadow-sm'
+            : 'inline-flex'
+        }
+      >
+        <Image
+          src="/logo.png"
+          alt="QuickDoctor"
+          width={s.icon}
+          height={s.icon}
+          className="object-contain group-hover:scale-[1.03] transition-transform"
+          priority
+        />
+      </span>
       {showText && (
-        <span className={`${s.text} font-extrabold tracking-tight text-dark-slate dark:text-white`}>
+        <span
+          className={`${s.text} font-extrabold tracking-tight ${
+            variant === 'onDark' ? 'text-white' : 'text-dark-slate dark:text-white'
+          }`}
+        >
           Quick<span className="text-primary">Doctor</span>
         </span>
       )}
