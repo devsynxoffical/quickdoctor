@@ -15,7 +15,7 @@ const coreServices = [
     desc: "HD video calls with registered Irish GPs for diagnosis, advice, and referrals.",
     icon: Video,
     color: "bg-blue-50 text-blue-600",
-    link: "/register",
+    link: "/book",
     tag: "MOST POPULAR"
   },
   {
@@ -23,7 +23,7 @@ const coreServices = [
     desc: "Instant prescriptions sent directly to your local pharmacy after clinical review.",
     icon: Pill,
     color: "bg-blue-50 text-blue-600",
-    link: "/register",
+    link: "/prescriptions/acne-treatment",
     tag: "INSTANT"
   },
   {

@@ -26,7 +26,7 @@ const services = [
     title: "Video Consultation",
     description: "Speak directly with a doctor online from anywhere in Ireland.",
     icon: Video,
-    href: "/consultation",
+    href: "/book",
   },
   {
     title: "Digital Prescriptions",

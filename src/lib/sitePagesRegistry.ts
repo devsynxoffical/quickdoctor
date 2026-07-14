@@ -46,10 +46,7 @@ const prescriptionPages: SitePageDef[] = [
 ];
 
 const consultationPages: SitePageDef[] = [
-  { slug: 'consultation-female-doctor', path: '/consultation/female-doctor', title: 'Video Consultation — Female Doctor', group: 'Video consultation' },
-  { slug: 'consultation-male-doctor', path: '/consultation/male-doctor', title: 'Video Consultation — Male Doctor', group: 'Video consultation' },
-  { slug: 'consultation-portuguese', path: '/consultation/portuguese', title: 'Video Consultation in Portuguese', group: 'Video consultation' },
-  { slug: 'consultation-spanish', path: '/consultation/spanish', title: 'Video Consultation in Spanish', group: 'Video consultation' },
+  { slug: 'consultation', path: '/consultation', title: 'Video Consultation', group: 'Main' },
 ];
 
 export const SITE_PAGE_REGISTRY: SitePageDef[] = [
@@ -58,7 +55,6 @@ export const SITE_PAGE_REGISTRY: SitePageDef[] = [
   { slug: 'help', path: '/help', title: 'Help & Support', group: 'Main' },
   { slug: 'doctors', path: '/book', title: 'Book consultation', group: 'Main' },
   { slug: 'medical-certificates', path: '/medical-certificates', title: 'Medical Certificates', group: 'Main' },
-  { slug: 'consultation', path: '/consultation', title: 'Video Consultation', group: 'Main' },
   { slug: 'blog', path: '/blog', title: 'Blog', group: 'Main' },
   { slug: 'doctor-apply', path: '/doctor/apply', title: 'Become a Doctor', group: 'Main' },
   { slug: 'privacy', path: '/privacy', title: 'Privacy Policy', group: 'Legal' },

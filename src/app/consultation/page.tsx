@@ -1,48 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, ShieldCheck, UserCheck, Video } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { cmsApi } from "@/lib/api";
-
-const consultationCards = [
-  {
-    title: "Female Doctor Consultation",
-    description: "Private online GP appointments with experienced female doctors.",
-    href: "/consultation/female-doctor",
-    slug: "consultation-female-doctor",
-    badge: "Most Requested",
-  },
-  {
-    title: "Male Doctor Consultation",
-    description: "Comfortable online consultations with qualified male doctors.",
-    href: "/consultation/male-doctor",
-    slug: "consultation-male-doctor",
-    badge: "Available Today",
-  },
-  {
-    title: "Consultation in Portuguese",
-    description: "Book a video consultation with Portuguese-speaking clinicians.",
-    href: "/consultation/portuguese",
-    slug: "consultation-portuguese",
-    badge: "Language Support",
-  },
-  {
-    title: "Consultation in Spanish",
-    description: "Access Spanish-language online GP consultations from home.",
-    href: "/consultation/spanish",
-    slug: "consultation-spanish",
-    badge: "Language Support",
-  },
-];
+import { getLoginUrl, isPatient } from "@/lib/auth";
 
 const reassurancePoints = [
   {
     title: "Irish-Registered Doctors",
-    description: "All consultations are reviewed and delivered by qualified clinicians.",
+    description: "Consultations are delivered by qualified clinicians. Admin assigns your booking to an available GP.",
     icon: UserCheck,
   },
   {
@@ -52,92 +20,50 @@ const reassurancePoints = [
   },
   {
     title: "Video Appointments",
-    description: "See a doctor online without visiting a clinic.",
+    description: "Pick a time that suits you — no need to choose a specific doctor.",
     icon: Video,
   },
 ];
 
 export default function ConsultationLandingPage() {
-  const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all(
-      consultationCards.map(async (card) => {
-        try {
-          const avail = await cmsApi.pageAvailability(card.slug);
-          return avail.status === "DRAFT" ? card.slug : null;
-        } catch {
-          return null;
-        }
-      })
-    ).then((drafts) => {
-      if (!cancelled) setHiddenSlugs(new Set(drafts.filter(Boolean) as string[]));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const visibleCards = useMemo(
-    () => consultationCards.filter((card) => !hiddenSlugs.has(card.slug)),
-    [hiddenSlugs]
-  );
+  const bookHref = isPatient() ? "/book" : getLoginUrl("/book", "book");
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
       <main className="pt-24">
         <section className="py-16 px-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-3xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="text-center"
             >
-              <h1 className="text-4xl md:text-6xl font-black text-dark-slate dark:text-white">
-                Choose your consultation type
+              <p className="text-xs font-black uppercase tracking-widest text-primary mb-4">Video consultation</p>
+              <h1 className="text-4xl md:text-5xl font-black text-dark-slate dark:text-white">
+                Book a private online GP appointment
               </h1>
-              <p className="mt-4 text-slate-600 dark:text-slate-300 text-lg max-w-3xl mx-auto">
-                Book a private video consultation with an Irish-registered GP. Choose your preferred doctor or language, pick a time that suits you, and get care from home.
+              <p className="mt-4 text-slate-600 dark:text-slate-300 text-lg">
+                Choose a time, complete payment, and we assign an available General Physician. You do not pick a doctor from
+                a list.
               </p>
+              <Link
+                href={bookHref}
+                className="mt-10 inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black text-sm hover:bg-primary/90 transition-colors"
+              >
+                Book video consultation <ArrowRight className="w-4 h-4" />
+              </Link>
             </motion.div>
-
-            <div className="mt-12 grid md:grid-cols-2 gap-6">
-              {visibleCards.map((item) => (
-                <motion.div
-                  key={item.href}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
-                  className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm"
-                >
-                  <div className="p-6">
-                    <p className="inline-flex text-[11px] font-black uppercase tracking-wide px-3 py-1 rounded-full bg-primary/10 text-primary">
-                      {item.badge}
-                    </p>
-                    <h2 className="mt-3 text-2xl font-black text-dark-slate dark:text-white">{item.title}</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.description}</p>
-                    <Link
-                      href={item.href}
-                      className="mt-5 inline-flex items-center gap-2 font-black text-primary hover:text-primary/80 transition-colors"
-                    >
-                      Book consultation <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
           </div>
         </section>
 
         <section className="pb-20 px-6">
           <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-4">
             {reassurancePoints.map((point) => (
-              <div key={point.title} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+              <div
+                key={point.title}
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5"
+              >
                 <point.icon className="w-5 h-5 text-primary" />
                 <h3 className="mt-3 font-black text-dark-slate dark:text-white">{point.title}</h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{point.description}</p>

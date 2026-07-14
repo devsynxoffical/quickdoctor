@@ -7,7 +7,6 @@ import Logo from '@/components/Logo';
 import UserMenu from '@/components/UserMenu';
 import { cmsApi } from '@/lib/api';
 import {
-  BOOKING_APPOINTMENTS_PATH,
   getLoginUrl,
   isPatient,
 } from '@/lib/auth';
@@ -63,29 +62,6 @@ const prescriptionOptions = {
   ]
 };
 
-const consultationOptions = {
-  "GENERAL CONSULTATION": [
-    "Video Consultation with a Female Doctor",
-    "Video Consultation with a Male Doctor",
-    "Video Consultation in Portuguese",
-    "Video Consultation in Spanish"
-  ]
-};
-
-const consultationRouteMap: Record<string, string> = {
-  "Video Consultation with a Female Doctor": "/consultation/female-doctor",
-  "Video Consultation with a Male Doctor": "/consultation/male-doctor",
-  "Video Consultation in Portuguese": "/consultation/portuguese",
-  "Video Consultation in Spanish": "/consultation/spanish",
-};
-
-const consultationSlugMap: Record<string, string> = {
-  "Video Consultation with a Female Doctor": "consultation-female-doctor",
-  "Video Consultation with a Male Doctor": "consultation-male-doctor",
-  "Video Consultation in Portuguese": "consultation-portuguese",
-  "Video Consultation in Spanish": "consultation-spanish",
-};
-
 const prescriptionRouteMap: Record<string, string> = {
   "Contraceptive Pill, Patch or Ring": "/prescriptions/contraceptive-pill-patch-ring",
   "Period Delay": "/prescriptions/period-delay-treatment",
@@ -129,7 +105,6 @@ const Navbar = () => {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
-  const [visibleConsultationItems, setVisibleConsultationItems] = useState<string[] | null>(null);
   const [hiddenPrescriptionItems, setHiddenPrescriptionItems] = useState<Set<string>>(new Set());
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -139,36 +114,22 @@ const Navbar = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const isLiveSlug = async (slug?: string) => {
-      if (!slug) return true;
-      try {
-        const avail = await cmsApi.pageAvailability(slug);
-        // Hide only explicit drafts; MISSING keeps static pages live.
-        return avail.status !== 'DRAFT';
-      } catch {
-        return true;
-      }
-    };
-
     const loadVisibility = async () => {
-      const consultationItems = Object.values(consultationOptions).flat();
-      const consultationChecks = await Promise.all(
-        consultationItems.map(async (item) => ({
-          item,
-          visible: await isLiveSlug(consultationSlugMap[item]),
-        }))
-      );
-
       const prescriptionItems = Object.values(prescriptionOptions).flat();
       const prescriptionChecks = await Promise.all(
-        prescriptionItems.map(async (item) => ({
-          item,
-          visible: await isLiveSlug(prescriptionSlugMap[item]),
-        }))
+        prescriptionItems.map(async (item) => {
+          const slug = prescriptionSlugMap[item];
+          if (!slug) return { item, visible: true };
+          try {
+            const avail = await cmsApi.pageAvailability(slug);
+            return { item, visible: avail.status !== 'DRAFT' };
+          } catch {
+            return { item, visible: true };
+          }
+        })
       );
 
       if (cancelled) return;
-      setVisibleConsultationItems(consultationChecks.filter((c) => c.visible).map((c) => c.item));
       setHiddenPrescriptionItems(
         new Set(prescriptionChecks.filter((c) => !c.visible).map((c) => c.item))
       );
@@ -179,14 +140,6 @@ const Navbar = () => {
       cancelled = true;
     };
   }, []);
-
-  const consultationOptionsFiltered = useMemo((): Record<string, string[]> => {
-    if (!visibleConsultationItems) return consultationOptions;
-    const items = consultationOptions["GENERAL CONSULTATION"].filter((item) =>
-      visibleConsultationItems.includes(item)
-    );
-    return items.length ? { "GENERAL CONSULTATION": items } : {};
-  }, [visibleConsultationItems]);
 
   const prescriptionOptionsFiltered = useMemo((): Record<string, string[]> => {
     const filtered: Record<string, string[]> = {};
@@ -203,7 +156,6 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto h-[4.75rem] px-4 sm:px-6 flex items-center gap-4 lg:gap-6">
           <Logo size="lg" showText={false} className="shrink-0" />
 
-          {/* Desktop nav */}
           <div className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2 min-w-0">
             <Link
               href="/"
@@ -212,59 +164,12 @@ const Navbar = () => {
               Home
             </Link>
 
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown('consultation')}
-              onMouseLeave={() => {
-                setActiveDropdown(null);
-                setActiveSubmenu(null);
-              }}
+            <Link
+              href={bookHref}
+              className="px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap"
             >
-              <Link
-                href="/consultation"
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap"
-              >
-                Consultations
-                <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${activeDropdown === 'consultation' ? 'rotate-180' : ''}`} />
-              </Link>
-
-              {activeDropdown === 'consultation' && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-72 z-[60]">
-                  <div className="bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3">
-                    <div className="flex flex-col gap-1 relative">
-                       {Object.keys(consultationOptionsFiltered).map((category, idx) => (
-                        <div 
-                          key={idx}
-                          onMouseEnter={() => setActiveSubmenu(category)}
-                          className="relative"
-                        >
-                          <div className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-default transition-all ${activeSubmenu === category ? 'bg-primary text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:text-primary'}`}>
-                            <span className="text-[11px] font-semibold tracking-wide whitespace-nowrap">{category}</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </div>
-
-                          {activeSubmenu === category && (
-                            <div className="absolute top-0 left-full ml-3 w-80 bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3 z-[70]">
-                                <div className="flex flex-col gap-1">
-                                  {(consultationOptionsFiltered[category] ?? []).map((item, idy) => (
-                                    <Link 
-                                      key={idy}
-                                      href={consultationRouteMap[item] ?? "/register"}
-                                      className="px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-[11px] font-semibold tracking-wide text-slate-600 dark:text-slate-300 hover:text-primary transition-all"
-                                    >
-                                      {item}
-                                    </Link>
-                                  ))}
-                                </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+              Video consultation
+            </Link>
 
             <Link
               href="/medical-certificates"
@@ -281,7 +186,10 @@ const Navbar = () => {
                 setActiveSubmenu(null);
               }}
             >
-              <button className="flex items-center gap-1 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap">
+              <button
+                type="button"
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap"
+              >
                 Prescriptions
                 <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${activeDropdown === 'prescriptions' ? 'rotate-180' : ''}`} />
               </button>
@@ -291,7 +199,7 @@ const Navbar = () => {
                   <div className="bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3">
                     <div className="flex flex-col gap-1 relative">
                       {Object.keys(prescriptionOptionsFiltered).map((category, idx) => (
-                        <div 
+                        <div
                           key={idx}
                           onMouseEnter={() => setActiveSubmenu(category)}
                           className="relative"
@@ -303,17 +211,17 @@ const Navbar = () => {
 
                           {activeSubmenu === category && (
                             <div className="absolute top-0 left-full ml-3 w-80 bg-white dark:bg-slate-900 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-3 z-[70]">
-                                <div className="flex flex-col gap-1">
-                                  {(prescriptionOptionsFiltered[category] ?? []).map((item, idy) => (
-                                    <Link 
-                                      key={idy}
-                                      href={prescriptionRouteMap[item] ?? "/register"}
-                                      className="px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-[11px] font-semibold tracking-wide text-slate-600 dark:text-slate-300 hover:text-primary transition-all"
-                                    >
-                                      {item}
-                                    </Link>
-                                  ))}
-                                </div>
+                              <div className="flex flex-col gap-1">
+                                {(prescriptionOptionsFiltered[category] ?? []).map((item, idy) => (
+                                  <Link
+                                    key={idy}
+                                    href={prescriptionRouteMap[item] ?? '/register'}
+                                    className="px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-[11px] font-semibold tracking-wide text-slate-600 dark:text-slate-300 hover:text-primary transition-all"
+                                  >
+                                    {item}
+                                  </Link>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -324,12 +232,6 @@ const Navbar = () => {
               )}
             </div>
 
-            <Link
-              href="/book"
-              className="px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap"
-            >
-              Book
-            </Link>
             <Link
               href="/doctor/apply"
               className="px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap hidden xl:inline-flex"
@@ -344,7 +246,6 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
             <Link
               href={bookHref}
@@ -353,7 +254,8 @@ const Navbar = () => {
               Book appointment
             </Link>
             <UserMenu />
-            <button 
+            <button
+              type="button"
               onClick={toggleMobileMenu}
               className="md:hidden p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Open menu"
@@ -364,109 +266,94 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[45] bg-white dark:bg-slate-950 pt-24 px-6 overflow-y-auto">
-            <div className="max-w-md mx-auto py-10">
-              <div className="space-y-6">
-                
-                {/* Regular Links */}
-                <Link href="/" onClick={toggleMobileMenu} className="block text-2xl font-black text-dark-slate dark:text-white">Home</Link>
-                
-                {/* Video Consultation Mobile Accordion */}
-                <div>
-                   <button 
-                     onClick={() => setMobileExpanded(mobileExpanded === 'consultation' ? null : 'consultation')}
-                     className="w-full flex items-center justify-between text-2xl font-black text-dark-slate dark:text-white py-2"
-                   >
-                     Video Consultation
-                     <ChevronDown className={`w-6 h-6 transition-transform ${mobileExpanded === 'consultation' ? 'rotate-180' : ''}`} />
-                   </button>
-                   {mobileExpanded === 'consultation' && (
-                      <div className="overflow-hidden mt-4">
-                         {Object.keys(consultationOptionsFiltered).map((cat, i) => (
-                           <div key={i} className="mb-4">
-                              <div className="px-4 py-2 text-[10px] font-black tracking-widest text-primary uppercase">{cat}</div>
-                              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden mt-2">
-                                {(consultationOptionsFiltered[cat] ?? []).map((item, j) => (
-                                  <Link 
-                                    key={j} 
-                                    href={consultationRouteMap[item] ?? "/register"}
-                                    onClick={toggleMobileMenu}
-                                    className="block px-6 py-3 text-sm font-medium text-slate-500 border-b border-white dark:border-slate-800 last:border-0"
-                                  >
-                                    {item}
-                                  </Link>
-                                ))}
-                              </div>
-                           </div>
-                         ))}
-                       </div>
-                     )}
+          <div className="max-w-md mx-auto py-10">
+            <div className="space-y-6">
+              <Link href="/" onClick={toggleMobileMenu} className="block text-2xl font-black text-dark-slate dark:text-white">
+                Home
+              </Link>
+
+              <Link
+                href={bookHref}
+                onClick={toggleMobileMenu}
+                className="block text-2xl font-black text-dark-slate dark:text-white"
+              >
+                Video consultation
+              </Link>
+
+              <Link
+                href="/medical-certificates"
+                onClick={toggleMobileMenu}
+                className="block text-2xl font-black text-dark-slate dark:text-white"
+              >
+                Medical Certificates
+              </Link>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setMobileExpanded(mobileExpanded === 'prescriptions' ? null : 'prescriptions')}
+                  className="w-full flex items-center justify-between text-2xl font-black text-dark-slate dark:text-white py-2"
+                >
+                  Digital Prescription
+                  <ChevronDown className={`w-6 h-6 transition-transform ${mobileExpanded === 'prescriptions' ? 'rotate-180' : ''}`} />
+                </button>
+                {mobileExpanded === 'prescriptions' && (
+                  <div className="overflow-hidden mt-4">
+                    {Object.keys(prescriptionOptionsFiltered).map((cat, i) => (
+                      <div key={i} className="mb-4">
+                        <div className="px-4 py-2 text-[10px] font-black tracking-widest text-primary uppercase">{cat}</div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden mt-2">
+                          {(prescriptionOptionsFiltered[cat] ?? []).map((item, j) => (
+                            <Link
+                              key={j}
+                              href={prescriptionRouteMap[item] ?? '/register'}
+                              onClick={toggleMobileMenu}
+                              className="block px-6 py-3 text-sm font-medium text-slate-500 border-b border-white dark:border-slate-800 last:border-0"
+                            >
+                              {item}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Link href="/contact" onClick={toggleMobileMenu} className="block text-2xl font-black text-dark-slate dark:text-white">
+                Contact
+              </Link>
+
+              <div className="pt-10 flex flex-col gap-4">
+                <Link
+                  href={bookHref}
+                  onClick={toggleMobileMenu}
+                  className="w-full py-5 bg-primary text-white rounded-2xl font-black text-center text-lg uppercase tracking-widest shadow-xl shadow-primary/20"
+                >
+                  Book Appointment
+                </Link>
+                <Link
+                  href={getLoginUrl()}
+                  onClick={toggleMobileMenu}
+                  className="w-full py-5 border-2 border-slate-200 dark:border-slate-800 text-dark-slate dark:text-white rounded-2xl font-black text-center text-lg uppercase tracking-widest flex items-center justify-center gap-3"
+                >
+                  <LogIn className="w-5 h-5" />
+                  Patient Login
+                </Link>
+                <div className="flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 pt-2">
+                  <Link href="/doctor" onClick={toggleMobileMenu} className="hover:text-secondary">
+                    Doctor portal
+                  </Link>
+                  <span>•</span>
+                  <Link href="/admin" onClick={toggleMobileMenu} className="hover:text-dark-slate">
+                    Admin portal
+                  </Link>
                 </div>
-
-                <Link href="/medical-certificates" onClick={toggleMobileMenu} className="block text-2xl font-black text-dark-slate dark:text-white">Medical Certificates</Link>
-
-                {/* Digital Prescription Mobile Accordion */}
-                <div>
-                   <button 
-                     onClick={() => setMobileExpanded(mobileExpanded === 'prescriptions' ? null : 'prescriptions')}
-                     className="w-full flex items-center justify-between text-2xl font-black text-dark-slate dark:text-white py-2"
-                   >
-                     Digital Prescription
-                     <ChevronDown className={`w-6 h-6 transition-transform ${mobileExpanded === 'prescriptions' ? 'rotate-180' : ''}`} />
-                   </button>
-                   {mobileExpanded === 'prescriptions' && (
-                      <div className="overflow-hidden mt-4">
-                         {Object.keys(prescriptionOptionsFiltered).map((cat, i) => (
-                           <div key={i} className="mb-4">
-                              <div className="px-4 py-2 text-[10px] font-black tracking-widest text-primary uppercase">{cat}</div>
-                              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden mt-2">
-                                {(prescriptionOptionsFiltered[cat] ?? []).map((item, j) => (
-                                  <Link 
-                                    key={j} 
-                                    href={prescriptionRouteMap[item] ?? "/register"} 
-                                    onClick={toggleMobileMenu}
-                                    className="block px-6 py-3 text-sm font-medium text-slate-500 border-b border-white dark:border-slate-800 last:border-0"
-                                  >
-                                    {item}
-                                  </Link>
-                                ))}
-                              </div>
-                           </div>
-                         ))}
-                       </div>
-                     )}
-                </div>
-
-                <Link href="/contact" onClick={toggleMobileMenu} className="block text-2xl font-black text-dark-slate dark:text-white">Contact</Link>
-
-                {/* Mobile CTAs */}
-                <div className="pt-10 flex flex-col gap-4">
-                   <Link 
-                     href={bookHref} 
-                     onClick={toggleMobileMenu}
-                     className="w-full py-5 bg-primary text-white rounded-2xl font-black text-center text-lg uppercase tracking-widest shadow-xl shadow-primary/20"
-                   >
-                     Book Appointment
-                   </Link>
-                   <Link 
-                     href={getLoginUrl()} 
-                     onClick={toggleMobileMenu}
-                     className="w-full py-5 border-2 border-slate-200 dark:border-slate-800 text-dark-slate dark:text-white rounded-2xl font-black text-center text-lg uppercase tracking-widest flex items-center justify-center gap-3"
-                   >
-                     <LogIn className="w-5 h-5" />
-                     Patient Login
-                   </Link>
-                   <div className="flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 pt-2">
-                     <Link href="/doctor" onClick={toggleMobileMenu} className="hover:text-secondary">Doctor portal</Link>
-                     <span>•</span>
-                     <Link href="/admin" onClick={toggleMobileMenu} className="hover:text-dark-slate">Admin portal</Link>
-                   </div>
-                </div>
-
               </div>
             </div>
+          </div>
         </div>
       )}
     </>
